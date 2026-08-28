@@ -141,3 +141,4 @@ C:\Users\bolt\Desktop\DriventaBackend\Driventa.API\bin\Debug\net10.0\zh-Hans\Mic
 C:\Users\bolt\Desktop\DriventaBackend\Driventa.API\bin\Debug\net10.0\zh-Hant\Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll
 C:\Users\bolt\Desktop\DriventaBackend\Driventa.API\bin\Debug\net10.0\Driventa.API.staticwebassets.runtime.json
 C:\Users\bolt\Desktop\DriventaBackend\Driventa.API\bin\Debug\net10.0\Driventa_API.postman_collection.json
+C:\Users\bolt\Desktop\DriventaBackend\Driventa.API\obj\Debug\net10.0\Driventa.API.sourcelink.json

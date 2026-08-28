@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Driventa.Application.DTOs.Common;
 using Driventa.Application.DTOs.Loads;
+using Driventa.Application.DTOs.Notes;
 using Driventa.Domain.Entities;
 using Driventa.Domain.Enums;
 using Driventa.Infrastructure.Persistence;
@@ -277,9 +278,35 @@ public class LoadsController : ControllerBase
         return Ok(ApiResponse<LoadResponse>.Ok(MapToResponse(load), "Load status updated successfully."));
     }
 
+    [HttpGet("{id:guid}/notes")]
+    [Authorize]
+    public async Task<ActionResult<ApiResponse<List<NoteResponse>>>> GetNotes(Guid id)
+    {
+        var load = await _context.Loads
+            .FirstOrDefaultAsync(l => l.Id == id && !l.IsDeleted);
+
+        if (load == null)
+            return NotFound(ApiResponse<List<NoteResponse>>.Fail("Load not found."));
+
+        var notes = await _context.LoadNotes
+            .Where(n => n.LoadId == id && !n.IsDeleted)
+            .OrderByDescending(n => n.CreatedAt)
+            .Select(n => new NoteResponse
+            {
+                Id = n.Id,
+                ParentId = n.LoadId,
+                Content = n.Content,
+                CreatedByUserId = n.CreatedByUserId,
+                CreatedAt = n.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(ApiResponse<List<NoteResponse>>.Ok(notes));
+    }
+
     [HttpPost("{id:guid}/notes")]
     [Authorize]
-    public async Task<ActionResult<ApiResponse<LoadNote>>> AddNote(
+    public async Task<ActionResult<ApiResponse<NoteResponse>>> AddNote(
         Guid id,
         [FromBody] LoadNoteRequest request)
     {
@@ -287,7 +314,7 @@ public class LoadsController : ControllerBase
             .FirstOrDefaultAsync(l => l.Id == id && !l.IsDeleted);
 
         if (load == null)
-            return NotFound(ApiResponse<LoadNote>.Fail("Load not found."));
+            return NotFound(ApiResponse<NoteResponse>.Fail("Load not found."));
 
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         var note = new LoadNote
@@ -300,7 +327,16 @@ public class LoadsController : ControllerBase
         _context.LoadNotes.Add(note);
         await _context.SaveChangesAsync();
 
-        return Ok(ApiResponse<LoadNote>.Ok(note, "Note added successfully."));
+        var response = new NoteResponse
+        {
+            Id = note.Id,
+            ParentId = note.LoadId,
+            Content = note.Content,
+            CreatedByUserId = note.CreatedByUserId,
+            CreatedAt = note.CreatedAt
+        };
+
+        return Ok(ApiResponse<NoteResponse>.Ok(response, "Note added successfully."));
     }
 
     private static string GenerateLoadNumber()

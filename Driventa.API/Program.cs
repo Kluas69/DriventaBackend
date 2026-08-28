@@ -12,6 +12,10 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Railway: Bind to the PORT environment variable
+var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+
 // Infrastructure (DbContext, Identity, JWT, Repositories)
 builder.Services.AddInfrastructure(builder.Configuration);
 
@@ -102,10 +106,20 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var dbContext = services.GetRequiredService<AppDbContext>();
-        if (!app.Environment.IsProduction())
+        logger.LogInformation("Connecting to database...");
+
+        var pendingMigrations = await dbContext.Database.GetPendingMigrationsAsync();
+        var pendingCount = pendingMigrations.Count();
+
+        if (pendingCount > 0)
         {
+            logger.LogInformation("Applying {Count} pending migration(s)...", pendingCount);
             await dbContext.Database.MigrateAsync();
             logger.LogInformation("Database migrations applied successfully.");
+        }
+        else
+        {
+            logger.LogInformation("Database is up to date. No pending migrations.");
         }
 
         var roleManager = services.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
@@ -116,7 +130,7 @@ using (var scope = app.Services.CreateScope())
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "An error occurred during database migration or seeding.");
+        logger.LogError(ex, "DATABASE STARTUP FAILED: {Message}", ex.Message);
         throw;
     }
 }
@@ -133,7 +147,6 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRateLimiter();
 app.UseCors("Dashboard");

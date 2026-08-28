@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Driventa.Application.DTOs.Applications;
 using Driventa.Application.DTOs.Common;
+using Driventa.Application.DTOs.Notes;
 using Driventa.Domain.Entities;
 using Driventa.Domain.Enums;
 using Driventa.Infrastructure.Persistence;
@@ -147,9 +148,35 @@ public class ApplicationsController : ControllerBase
         return Ok(ApiResponse<Domain.Entities.Application>.Ok(application, "Application assigned successfully."));
     }
 
+    [HttpGet("{id:guid}/notes")]
+    [Authorize]
+    public async Task<ActionResult<ApiResponse<List<NoteResponse>>>> GetNotes(Guid id)
+    {
+        var application = await _context.Applications
+            .FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted);
+
+        if (application == null)
+            return NotFound(ApiResponse<List<NoteResponse>>.Fail("Application not found."));
+
+        var notes = await _context.ApplicationNotes
+            .Where(n => n.ApplicationId == id && !n.IsDeleted)
+            .OrderByDescending(n => n.CreatedAt)
+            .Select(n => new NoteResponse
+            {
+                Id = n.Id,
+                ParentId = n.ApplicationId,
+                Content = n.Content,
+                CreatedByUserId = n.CreatedByUserId,
+                CreatedAt = n.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(ApiResponse<List<NoteResponse>>.Ok(notes));
+    }
+
     [HttpPost("{id:guid}/notes")]
     [Authorize]
-    public async Task<ActionResult<ApiResponse<ApplicationNote>>> AddNote(
+    public async Task<ActionResult<ApiResponse<NoteResponse>>> AddNote(
         Guid id,
         [FromBody] ApplicationNoteRequest request)
     {
@@ -157,7 +184,7 @@ public class ApplicationsController : ControllerBase
             .FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted);
 
         if (application == null)
-            return NotFound(ApiResponse<ApplicationNote>.Fail("Application not found."));
+            return NotFound(ApiResponse<NoteResponse>.Fail("Application not found."));
 
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         var note = new ApplicationNote
@@ -170,7 +197,16 @@ public class ApplicationsController : ControllerBase
         _context.ApplicationNotes.Add(note);
         await _context.SaveChangesAsync();
 
-        return Ok(ApiResponse<ApplicationNote>.Ok(note, "Note added successfully."));
+        var response = new NoteResponse
+        {
+            Id = note.Id,
+            ParentId = note.ApplicationId,
+            Content = note.Content,
+            CreatedByUserId = note.CreatedByUserId,
+            CreatedAt = note.CreatedAt
+        };
+
+        return Ok(ApiResponse<NoteResponse>.Ok(response, "Note added successfully."));
     }
 
     [HttpPost("{id:guid}/convert-to-carrier")]

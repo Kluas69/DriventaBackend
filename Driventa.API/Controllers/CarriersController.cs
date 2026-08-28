@@ -1,8 +1,10 @@
+using System.Security.Claims;
 using Driventa.Application.DTOs.Carriers;
 using Driventa.Application.DTOs.Common;
 using Driventa.Application.DTOs.Drivers;
 using Driventa.Application.DTOs.Documents;
 using Driventa.Application.DTOs.Loads;
+using Driventa.Application.DTOs.Notes;
 using Driventa.Application.DTOs.Trucks;
 using Driventa.Domain.Entities;
 using Driventa.Domain.Enums;
@@ -401,6 +403,67 @@ public class CarriersController : ControllerBase
                 PageSize = pageSize,
                 TotalCount = totalCount
             }));
+    }
+
+    [HttpGet("{id:guid}/notes")]
+    [Authorize]
+    public async Task<ActionResult<ApiResponse<List<NoteResponse>>>> GetNotes(Guid id)
+    {
+        var carrier = await _context.Carriers
+            .FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted);
+
+        if (carrier == null)
+            return NotFound(ApiResponse<List<NoteResponse>>.Fail("Carrier not found."));
+
+        var notes = await _context.CarrierNotes
+            .Where(n => n.CarrierId == id && !n.IsDeleted)
+            .OrderByDescending(n => n.CreatedAt)
+            .Select(n => new NoteResponse
+            {
+                Id = n.Id,
+                ParentId = n.CarrierId,
+                Content = n.Content,
+                CreatedByUserId = n.CreatedByUserId,
+                CreatedAt = n.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(ApiResponse<List<NoteResponse>>.Ok(notes));
+    }
+
+    [HttpPost("{id:guid}/notes")]
+    [Authorize]
+    public async Task<ActionResult<ApiResponse<NoteResponse>>> AddNote(
+        Guid id,
+        [FromBody] CarrierNoteRequest request)
+    {
+        var carrier = await _context.Carriers
+            .FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted);
+
+        if (carrier == null)
+            return NotFound(ApiResponse<NoteResponse>.Fail("Carrier not found."));
+
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var note = new CarrierNote
+        {
+            CarrierId = id,
+            Content = request.Content,
+            CreatedByUserId = userId != null ? Guid.Parse(userId) : null
+        };
+
+        _context.CarrierNotes.Add(note);
+        await _context.SaveChangesAsync();
+
+        var response = new NoteResponse
+        {
+            Id = note.Id,
+            ParentId = note.CarrierId,
+            Content = note.Content,
+            CreatedByUserId = note.CreatedByUserId,
+            CreatedAt = note.CreatedAt
+        };
+
+        return Ok(ApiResponse<NoteResponse>.Ok(response, "Note added successfully."));
     }
 
     private static CarrierResponse MapToResponse(Carrier carrier)

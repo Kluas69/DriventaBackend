@@ -13,3 +13,4 @@ C:\Users\bolt\Desktop\DriventaBackend\src\Driventa.Application\obj\Debug\net10.0
 C:\Users\bolt\Desktop\DriventaBackend\src\Driventa.Application\obj\Debug\net10.0\refint\Driventa.Application.dll
 C:\Users\bolt\Desktop\DriventaBackend\src\Driventa.Application\obj\Debug\net10.0\Driventa.Application.pdb
 C:\Users\bolt\Desktop\DriventaBackend\src\Driventa.Application\obj\Debug\net10.0\ref\Driventa.Application.dll
+C:\Users\bolt\Desktop\DriventaBackend\src\Driventa.Application\obj\Debug\net10.0\Driventa.Application.sourcelink.json

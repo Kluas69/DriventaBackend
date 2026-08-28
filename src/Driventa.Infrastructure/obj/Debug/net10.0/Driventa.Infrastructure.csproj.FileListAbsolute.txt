@@ -17,3 +17,4 @@ C:\Users\bolt\Desktop\DriventaBackend\src\Driventa.Infrastructure\obj\Debug\net1
 C:\Users\bolt\Desktop\DriventaBackend\src\Driventa.Infrastructure\obj\Debug\net10.0\Driventa.Infrastructure.pdb
 C:\Users\bolt\Desktop\DriventaBackend\src\Driventa.Infrastructure\obj\Debug\net10.0\Driventa.Infrastructure.genruntimeconfig.cache
 C:\Users\bolt\Desktop\DriventaBackend\src\Driventa.Infrastructure\obj\Debug\net10.0\ref\Driventa.Infrastructure.dll
+C:\Users\bolt\Desktop\DriventaBackend\src\Driventa.Infrastructure\obj\Debug\net10.0\Driventa.Infrastructure.sourcelink.json
