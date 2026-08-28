@@ -1,0 +1,11 @@
+C:\Users\bolt\Desktop\DriventaBackend\src\Driventa.Domain\bin\Debug\net10.0\Driventa.Domain.deps.json
+C:\Users\bolt\Desktop\DriventaBackend\src\Driventa.Domain\bin\Debug\net10.0\Driventa.Domain.dll
+C:\Users\bolt\Desktop\DriventaBackend\src\Driventa.Domain\bin\Debug\net10.0\Driventa.Domain.pdb
+C:\Users\bolt\Desktop\DriventaBackend\src\Driventa.Domain\obj\Debug\net10.0\Driventa.Domain.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\bolt\Desktop\DriventaBackend\src\Driventa.Domain\obj\Debug\net10.0\Driventa.Domain.AssemblyInfoInputs.cache
+C:\Users\bolt\Desktop\DriventaBackend\src\Driventa.Domain\obj\Debug\net10.0\Driventa.Domain.AssemblyInfo.cs
+C:\Users\bolt\Desktop\DriventaBackend\src\Driventa.Domain\obj\Debug\net10.0\Driventa.Domain.csproj.CoreCompileInputs.cache
+C:\Users\bolt\Desktop\DriventaBackend\src\Driventa.Domain\obj\Debug\net10.0\Driventa.Domain.dll
+C:\Users\bolt\Desktop\DriventaBackend\src\Driventa.Domain\obj\Debug\net10.0\refint\Driventa.Domain.dll
+C:\Users\bolt\Desktop\DriventaBackend\src\Driventa.Domain\obj\Debug\net10.0\Driventa.Domain.pdb
+C:\Users\bolt\Desktop\DriventaBackend\src\Driventa.Domain\obj\Debug\net10.0\ref\Driventa.Domain.dll

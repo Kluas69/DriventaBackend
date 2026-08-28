@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Driventa.Application/Driventa.Application.csproj" />
+    <Project Path="src/Driventa.Domain/Driventa.Domain.csproj" />
+    <Project Path="src/Driventa.Infrastructure/Driventa.Infrastructure.csproj" />
+  </Folder>
+  <Project Path="Driventa.API/Driventa.API.csproj" />
+</Solution>

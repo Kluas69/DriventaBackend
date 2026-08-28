@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "dgSpecHash": "scG8wZAugQM=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\bolt\\Desktop\\DriventaBackend\\src\\Driventa.Application\\Driventa.Application.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\bolt\\.nuget\\packages\\fluentvalidation\\11.12.0\\fluentvalidation.11.12.0.nupkg.sha512",
+    "C:\\Users\\bolt\\.nuget\\packages\\fluentvalidation.dependencyinjectionextensions\\11.12.0\\fluentvalidation.dependencyinjectionextensions.11.12.0.nupkg.sha512",
+    "C:\\Users\\bolt\\.nuget\\packages\\microsoft.extensions.dependencyinjection.abstractions\\10.0.0\\microsoft.extensions.dependencyinjection.abstractions.10.0.0.nupkg.sha512"
+  ],
+  "logs": []
+}
