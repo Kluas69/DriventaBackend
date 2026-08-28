@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using Npgsql;
 
 using Driventa.Application.Validation.Validators;
 using FluentValidation;
@@ -24,8 +25,17 @@ public static class DependencyInjection
         services.AddValidatorsFromAssemblyContaining<PublicApplicationRequestValidator>();
 
         // Database
+        // Accepts a Neon/Railway URI (postgres://...) or a plain Npgsql key/value
+        // string, and normalizes it so Npgsql can parse it in both cases.
+        var rawConnectionString =
+     Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
+     ?? Environment.GetEnvironmentVariable("DATABASE_URL")
+     ?? configuration.GetConnectionString("DefaultConnection");
+
+        var connectionString = BuildNpgsqlConnectionString(rawConnectionString);
+
         services.AddDbContext<AppDbContext>(options =>
-            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
+            options.UseNpgsql(connectionString));
 
         // Identity
         services.AddIdentityCore<ApplicationUser>(options =>
@@ -128,6 +138,68 @@ public static class DependencyInjection
         services.AddScoped<INotificationService, NotificationService>();
 
         return services;
+    }
+
+    /// <summary>
+    /// Accepts either a standard Npgsql key/value connection string or a URI-style
+    /// one (postgres://user:pass@host:port/db?sslmode=require) as handed out by
+    /// Neon, Railway, Heroku, etc., and returns a key/value string Npgsql can parse.
+    /// </summary>
+    private static string BuildNpgsqlConnectionString(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            throw new InvalidOperationException(
+                "No database connection string configured. Set ConnectionStrings:DefaultConnection " +
+                "or the DATABASE_URL environment variable.");
+        }
+
+        var value = raw.Trim();
+
+        // Already a key/value string (Host=...;Database=...) – use it as-is.
+        if (!value.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) &&
+            !value.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
+        {
+            return value;
+        }
+
+        var uri = new Uri(value);
+        var userInfo = uri.UserInfo.Split(':', 2);
+
+        var builder = new NpgsqlConnectionStringBuilder
+        {
+            Host = uri.Host,
+            Port = uri.Port > 0 ? uri.Port : 5432,
+            Database = Uri.UnescapeDataString(uri.AbsolutePath.TrimStart('/')),
+            Username = Uri.UnescapeDataString(userInfo[0]),
+            Password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : null
+        };
+
+        // Translate the query parameters we support. Unknown ones (e.g.
+        // channel_binding) are ignored – Npgsql negotiates channel binding
+        // automatically once the connection is encrypted.
+        foreach (var pair in uri.Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var kv = pair.Split('=', 2);
+            var key = Uri.UnescapeDataString(kv[0]);
+            var val = kv.Length > 1 ? Uri.UnescapeDataString(kv[1]) : string.Empty;
+
+            if (key.Equals("sslmode", StringComparison.OrdinalIgnoreCase))
+            {
+                builder.SslMode = val.ToLowerInvariant() switch
+                {
+                    "disable" => SslMode.Disable,
+                    "allow" => SslMode.Allow,
+                    "prefer" => SslMode.Prefer,
+                    "require" => SslMode.Require,
+                    "verify-ca" => SslMode.VerifyCA,
+                    "verify-full" => SslMode.VerifyFull,
+                    _ => builder.SslMode
+                };
+            }
+        }
+
+        return builder.ConnectionString;
     }
 }
 
