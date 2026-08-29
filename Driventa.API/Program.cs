@@ -112,7 +112,8 @@ using (var scope = app.Services.CreateScope())
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
         await RoleSeeder.SeedRolesAsync(roleManager);
         await RoleSeeder.SeedSuperAdminAsync(userManager);
-        logger.LogInformation("Roles and SuperAdmin seeded successfully.");
+        await RoleSeeder.SeedPermissionsAsync(dbContext);
+        logger.LogInformation("Roles, permissions, and SuperAdmin seeded successfully.");
     }
     catch (Exception ex)
     {

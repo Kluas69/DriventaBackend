@@ -25,7 +25,7 @@ public class CarriersController : ControllerBase
     }
 
     [HttpGet]
-    [Authorize]
+    [Authorize(Policy = "carriers.view")]
     public async Task<ActionResult<ApiResponse<PaginatedResponse<CarrierResponse>>>> GetAll(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
@@ -83,7 +83,7 @@ public class CarriersController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "SuperAdmin,Admin,DispatchManager")]
+    [Authorize(Policy = "carriers.create")]
     public async Task<ActionResult<ApiResponse<CarrierResponse>>> Create([FromBody] CreateCarrierRequest request)
     {
         var carrier = new Carrier
@@ -122,7 +122,7 @@ public class CarriersController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize]
+    [Authorize(Policy = "carriers.view")]
     public async Task<ActionResult<ApiResponse<CarrierResponse>>> GetById(Guid id)
     {
         var carrier = await _context.Carriers
@@ -135,7 +135,7 @@ public class CarriersController : ControllerBase
     }
 
     [HttpPatch("{id:guid}")]
-    [Authorize]
+    [Authorize(Policy = "carriers.edit")]
     public async Task<ActionResult<ApiResponse<CarrierResponse>>> Update(
         Guid id,
         [FromBody] UpdateCarrierRequest request)
@@ -174,7 +174,7 @@ public class CarriersController : ControllerBase
     }
 
     [HttpPost("{id:guid}/assign-dispatcher")]
-    [Authorize(Roles = "SuperAdmin,Admin,DispatchManager")]
+    [Authorize(Policy = "carriers.edit")]
     public async Task<ActionResult<ApiResponse<CarrierResponse>>> AssignDispatcher(
         Guid id,
         [FromBody] AssignDispatcherRequest request)
@@ -201,7 +201,7 @@ public class CarriersController : ControllerBase
     }
 
     [HttpGet("{id:guid}/loads")]
-    [Authorize]
+    [Authorize(Policy = "loads.view")]
     public async Task<ActionResult<ApiResponse<PaginatedResponse<Application.DTOs.Loads.LoadResponse>>>> GetLoads(
         Guid id,
         [FromQuery] int page = 1,
@@ -262,7 +262,7 @@ public class CarriersController : ControllerBase
     }
 
     [HttpGet("{id:guid}/trucks")]
-    [Authorize]
+    [Authorize(Policy = "carriers.view")]
     public async Task<ActionResult<ApiResponse<PaginatedResponse<TruckResponse>>>> GetTrucks(
         Guid id,
         [FromQuery] int page = 1,
@@ -309,7 +309,7 @@ public class CarriersController : ControllerBase
     }
 
     [HttpGet("{id:guid}/drivers")]
-    [Authorize]
+    [Authorize(Policy = "carriers.view")]
     public async Task<ActionResult<ApiResponse<PaginatedResponse<DriverResponse>>>> GetDrivers(
         Guid id,
         [FromQuery] int page = 1,
@@ -356,7 +356,7 @@ public class CarriersController : ControllerBase
     }
 
     [HttpGet("{id:guid}/documents")]
-    [Authorize]
+    [Authorize(Policy = "carriers.view")]
     public async Task<ActionResult<ApiResponse<PaginatedResponse<DocumentResponse>>>> GetDocuments(
         Guid id,
         [FromQuery] int page = 1,
@@ -426,5 +426,71 @@ public class CarriersController : ControllerBase
             ApplicationId = carrier.ApplicationId,
             CreatedAt = carrier.CreatedAt
         };
+    }
+
+    [HttpGet("{id:guid}/notes")]
+    [Authorize(Policy = "carriers.view")]
+    public async Task<ActionResult<ApiResponse<List<CarrierNote>>>> GetNotes(Guid id)
+    {
+        var carrier = await _context.Carriers
+            .FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted);
+
+        if (carrier == null)
+            return NotFound(ApiResponse<List<CarrierNote>>.Fail("Carrier not found."));
+
+        var notes = await _context.CarrierNotes
+            .Where(n => n.CarrierId == id)
+            .OrderByDescending(n => n.CreatedAt)
+            .ToListAsync();
+
+        return Ok(ApiResponse<List<CarrierNote>>.Ok(notes));
+    }
+
+    [HttpPost("{id:guid}/notes")]
+    [Authorize(Policy = "carriers.view")]
+    public async Task<ActionResult<ApiResponse<CarrierNote>>> AddNote(
+        Guid id,
+        [FromBody] Driventa.Application.DTOs.Applications.ApplicationNoteRequest request)
+    {
+        var carrier = await _context.Carriers
+            .FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted);
+
+        if (carrier == null)
+            return NotFound(ApiResponse<CarrierNote>.Fail("Carrier not found."));
+
+        var note = new CarrierNote
+        {
+            CarrierId = id,
+            Content = request.Content
+        };
+
+        _context.CarrierNotes.Add(note);
+        await _context.SaveChangesAsync();
+
+        return Ok(ApiResponse<CarrierNote>.Ok(note, "Note added successfully."));
+    }
+
+    [HttpDelete("{id:guid}")]
+    [Authorize(Policy = "carriers.edit")]
+    public async Task<ActionResult<ApiResponse<object>>> Delete(Guid id)
+    {
+        var carrier = await _context.Carriers
+            .FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted);
+
+        if (carrier == null)
+            return NotFound(ApiResponse<object>.Fail("Carrier not found."));
+
+        carrier.IsDeleted = true;
+
+        _context.ActivityLogs.Add(new ActivityLog
+        {
+            Action = "Delete",
+            EntityType = "Carrier",
+            EntityId = id,
+            Description = $"Carrier {carrier.CompanyName} deleted"
+        });
+
+        await _context.SaveChangesAsync();
+        return Ok(ApiResponse<object>.Ok(new object(), "Carrier deleted successfully."));
     }
 }

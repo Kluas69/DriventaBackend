@@ -24,7 +24,7 @@ public class DocumentsController : ControllerBase
     }
 
     [HttpPost("upload")]
-    [Authorize]
+    [Authorize(Policy = "carriers.view")]
     [DisableRequestSizeLimit]
     [RequestFormLimits(MultipartBodyLengthLimit = 52428800)]
     public async Task<ActionResult<ApiResponse<DocumentResponse>>> Upload(
@@ -81,7 +81,7 @@ public class DocumentsController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize]
+    [Authorize(Policy = "carriers.view")]
     public async Task<ActionResult<ApiResponse<DocumentResponse>>> GetById(Guid id)
     {
         var document = await _context.Documents
@@ -94,7 +94,7 @@ public class DocumentsController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = "SuperAdmin,Admin")]
+    [Authorize(Policy = "billing.manage")]
     public async Task<ActionResult<ApiResponse<object>>> Delete(Guid id)
     {
         var document = await _context.Documents

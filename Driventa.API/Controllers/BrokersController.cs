@@ -20,7 +20,7 @@ public class BrokersController : ControllerBase
     }
 
     [HttpGet]
-    [Authorize]
+    [Authorize(Policy = "carriers.view")]
     public async Task<ActionResult<ApiResponse<PaginatedResponse<BrokerResponse>>>> GetAll(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
@@ -69,7 +69,7 @@ public class BrokersController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "SuperAdmin,Admin,DispatchManager")]
+    [Authorize(Policy = "carriers.create")]
     public async Task<ActionResult<ApiResponse<BrokerResponse>>> Create([FromBody] CreateBrokerRequest request)
     {
         var broker = new Broker
@@ -103,7 +103,7 @@ public class BrokersController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize]
+    [Authorize(Policy = "carriers.view")]
     public async Task<ActionResult<ApiResponse<BrokerResponse>>> GetById(Guid id)
     {
         var broker = await _context.Brokers
@@ -116,7 +116,7 @@ public class BrokersController : ControllerBase
     }
 
     [HttpPatch("{id:guid}")]
-    [Authorize]
+    [Authorize(Policy = "carriers.edit")]
     public async Task<ActionResult<ApiResponse<BrokerResponse>>> Update(
         Guid id,
         [FromBody] UpdateBrokerRequest request)
@@ -167,5 +167,29 @@ public class BrokersController : ControllerBase
             IsActive = broker.IsActive,
             CreatedAt = broker.CreatedAt
         };
+    }
+
+    [HttpDelete("{id:guid}")]
+    [Authorize(Policy = "carriers.edit")]
+    public async Task<ActionResult<ApiResponse<object>>> Delete(Guid id)
+    {
+        var broker = await _context.Brokers
+            .FirstOrDefaultAsync(b => b.Id == id && !b.IsDeleted);
+
+        if (broker == null)
+            return NotFound(ApiResponse<object>.Fail("Broker not found."));
+
+        broker.IsDeleted = true;
+
+        _context.ActivityLogs.Add(new ActivityLog
+        {
+            Action = "Delete",
+            EntityType = "Broker",
+            EntityId = id,
+            Description = $"Broker {broker.CompanyName} deleted"
+        });
+
+        await _context.SaveChangesAsync();
+        return Ok(ApiResponse<object>.Ok(new object(), "Broker deleted successfully."));
     }
 }

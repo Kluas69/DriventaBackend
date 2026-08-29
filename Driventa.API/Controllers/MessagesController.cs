@@ -143,4 +143,28 @@ public class MessagesController : ControllerBase
 
         return Ok(ApiResponse<MessageResponse>.Ok(response, "Message sent successfully."));
     }
+
+    [HttpPatch("conversations/{id:guid}/read")]
+    [Authorize]
+    public async Task<ActionResult<ApiResponse<object>>> MarkConversationAsRead(Guid id)
+    {
+        var conversation = await _context.Conversations
+            .FirstOrDefaultAsync(c => c.Id == id);
+
+        if (conversation == null)
+            return NotFound(ApiResponse<object>.Fail("Conversation not found."));
+
+        var unreadMessages = await _context.Messages
+            .Where(m => m.ConversationId == id && !m.IsRead)
+            .ToListAsync();
+
+        foreach (var message in unreadMessages)
+        {
+            message.IsRead = true;
+        }
+
+        await _context.SaveChangesAsync();
+
+        return Ok(ApiResponse<object>.Ok(new object(), "Conversation marked as read."));
+    }
 }

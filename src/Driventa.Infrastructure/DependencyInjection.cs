@@ -97,6 +97,7 @@ public static class DependencyInjection
 
         services.AddAuthorization(options =>
         {
+            // Legacy role-based policies (kept for backward compatibility)
             options.AddPolicy("CanManageApplications", p =>
                 p.RequireRole("SuperAdmin", "Admin", "DispatchManager", "Dispatcher"));
             options.AddPolicy("CanManageCarriers", p =>
@@ -117,6 +118,61 @@ public static class DependencyInjection
                 p.RequireRole("SuperAdmin"));
             options.AddPolicy("CanAssignDispatchers", p =>
                 p.RequireRole("SuperAdmin", "Admin", "DispatchManager"));
+
+            // Permission-based policies
+            // Users
+            options.AddPolicy("users.view", p => p.RequireAssertion(ctx =>
+                ctx.User.HasClaim(c => c.Type == "permission" && c.Value == "users.view")));
+            options.AddPolicy("users.create", p => p.RequireAssertion(ctx =>
+                ctx.User.HasClaim(c => c.Type == "permission" && c.Value == "users.create")));
+            options.AddPolicy("users.edit", p => p.RequireAssertion(ctx =>
+                ctx.User.HasClaim(c => c.Type == "permission" && c.Value == "users.edit")));
+            options.AddPolicy("users.delete", p => p.RequireAssertion(ctx =>
+                ctx.User.HasClaim(c => c.Type == "permission" && c.Value == "users.delete")));
+
+            // Applications
+            options.AddPolicy("applications.view", p => p.RequireAssertion(ctx =>
+                ctx.User.HasClaim(c => c.Type == "permission" && c.Value == "applications.view")));
+            options.AddPolicy("applications.edit", p => p.RequireAssertion(ctx =>
+                ctx.User.HasClaim(c => c.Type == "permission" && c.Value == "applications.edit")));
+            options.AddPolicy("applications.assign", p => p.RequireAssertion(ctx =>
+                ctx.User.HasClaim(c => c.Type == "permission" && c.Value == "applications.assign")));
+            options.AddPolicy("applications.convert", p => p.RequireAssertion(ctx =>
+                ctx.User.HasClaim(c => c.Type == "permission" && c.Value == "applications.convert")));
+
+            // Carriers
+            options.AddPolicy("carriers.view", p => p.RequireAssertion(ctx =>
+                ctx.User.HasClaim(c => c.Type == "permission" && c.Value == "carriers.view")));
+            options.AddPolicy("carriers.create", p => p.RequireAssertion(ctx =>
+                ctx.User.HasClaim(c => c.Type == "permission" && c.Value == "carriers.create")));
+            options.AddPolicy("carriers.edit", p => p.RequireAssertion(ctx =>
+                ctx.User.HasClaim(c => c.Type == "permission" && c.Value == "carriers.edit")));
+
+            // Loads
+            options.AddPolicy("loads.view", p => p.RequireAssertion(ctx =>
+                ctx.User.HasClaim(c => c.Type == "permission" && c.Value == "loads.view")));
+            options.AddPolicy("loads.create", p => p.RequireAssertion(ctx =>
+                ctx.User.HasClaim(c => c.Type == "permission" && c.Value == "loads.create")));
+            options.AddPolicy("loads.edit", p => p.RequireAssertion(ctx =>
+                ctx.User.HasClaim(c => c.Type == "permission" && c.Value == "loads.edit")));
+            options.AddPolicy("loads.updateStatus", p => p.RequireAssertion(ctx =>
+                ctx.User.HasClaim(c => c.Type == "permission" && c.Value == "loads.updateStatus")));
+
+            // Billing
+            options.AddPolicy("billing.view", p => p.RequireAssertion(ctx =>
+                ctx.User.HasClaim(c => c.Type == "permission" && c.Value == "billing.view")));
+            options.AddPolicy("billing.create", p => p.RequireAssertion(ctx =>
+                ctx.User.HasClaim(c => c.Type == "permission" && c.Value == "billing.create")));
+            options.AddPolicy("billing.manage", p => p.RequireAssertion(ctx =>
+                ctx.User.HasClaim(c => c.Type == "permission" && c.Value == "billing.manage")));
+
+            // Reports
+            options.AddPolicy("reports.view", p => p.RequireAssertion(ctx =>
+                ctx.User.HasClaim(c => c.Type == "permission" && c.Value == "reports.view")));
+
+            // Roles
+            options.AddPolicy("roles.manage", p => p.RequireAssertion(ctx =>
+                ctx.User.HasClaim(c => c.Type == "permission" && c.Value == "roles.manage")));
         });
 
         // Repositories

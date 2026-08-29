@@ -21,7 +21,7 @@ public class BillingController : ControllerBase
     }
 
     [HttpGet("invoices")]
-    [Authorize(Roles = "SuperAdmin,Admin,DispatchManager")]
+    [Authorize(Policy = "billing.view")]
     public async Task<ActionResult<ApiResponse<PaginatedResponse<InvoiceResponse>>>> GetInvoices(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
@@ -73,7 +73,7 @@ public class BillingController : ControllerBase
     }
 
     [HttpPost("invoices")]
-    [Authorize(Roles = "SuperAdmin,Admin")]
+    [Authorize(Policy = "billing.create")]
     public async Task<ActionResult<ApiResponse<InvoiceResponse>>> CreateInvoice([FromBody] CreateInvoiceRequest request)
     {
         var carrier = await _context.Carriers
@@ -136,7 +136,7 @@ public class BillingController : ControllerBase
     }
 
     [HttpGet("invoices/{id:guid}")]
-    [Authorize(Roles = "SuperAdmin,Admin,DispatchManager")]
+    [Authorize(Policy = "billing.view")]
     public async Task<ActionResult<ApiResponse<InvoiceResponse>>> GetInvoiceById(Guid id)
     {
         var invoice = await _context.Invoices
@@ -152,7 +152,7 @@ public class BillingController : ControllerBase
     }
 
     [HttpPost("invoices/{id:guid}/status")]
-    [Authorize(Roles = "SuperAdmin,Admin")]
+    [Authorize(Policy = "billing.manage")]
     public async Task<ActionResult<ApiResponse<InvoiceResponse>>> UpdateInvoiceStatus(
         Guid id,
         [FromBody] InvoiceStatus status)
@@ -173,7 +173,7 @@ public class BillingController : ControllerBase
     }
 
     [HttpPost("invoices/{id:guid}/payments")]
-    [Authorize(Roles = "SuperAdmin,Admin")]
+    [Authorize(Policy = "billing.create")]
     public async Task<ActionResult<ApiResponse<PaymentResponse>>> AddPayment(
         Guid id,
         [FromBody] CreatePaymentRequest request)
@@ -231,7 +231,7 @@ public class BillingController : ControllerBase
     }
 
     [HttpGet("payments")]
-    [Authorize(Roles = "SuperAdmin,Admin")]
+    [Authorize(Policy = "billing.view")]
     public async Task<ActionResult<ApiResponse<PaginatedResponse<PaymentResponse>>>> GetPayments(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,

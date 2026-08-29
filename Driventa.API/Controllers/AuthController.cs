@@ -79,41 +79,11 @@ public class AuthController : ControllerBase
         }));
     }
 
-    [HttpPost("register")]
-    [Authorize(Roles = "SuperAdmin,Admin")]
-    public async Task<ActionResult<ApiResponse<object>>> Register([FromBody] RegisterRequest request)
-    {
-        if (request.Password != request.ConfirmPassword)
-            return BadRequest(ApiResponse<object>.Fail("Passwords do not match."));
-
-        var user = new ApplicationUser
-        {
-            UserName = request.Email,
-            Email = request.Email,
-            FirstName = request.FirstName,
-            LastName = request.LastName,
-            PhoneNumber = request.PhoneNumber,
-            EmailConfirmed = true,
-            IsActive = true
-        };
-
-        var result = await _userManager.CreateAsync(user, request.Password);
-        if (!result.Succeeded)
-        {
-            var errors = result.Errors.Select(e => e.Description).ToList();
-            return BadRequest(ApiResponse<object>.Fail("Registration failed.", errors));
-        }
-
-        await _userManager.AddToRoleAsync(user, request.Role);
-
-        return Ok(ApiResponse<object>.Ok(new { user.Id }, "User registered successfully."));
-    }
-
     [HttpPost("refresh")]
     public async Task<ActionResult<ApiResponse<LoginResponse>>> RefreshToken([FromBody] RefreshTokenRequest request)
     {
         var refreshToken = await _context.RefreshTokens
-            .FirstOrDefaultAsync(rt => rt.Token == request.RefreshToken && rt.IsActive);
+            .FirstOrDefaultAsync(rt => rt.Token == request.RefreshToken && !rt.IsRevoked && rt.ExpiresAt > DateTimeOffset.UtcNow);
 
         if (refreshToken == null)
             return Unauthorized(ApiResponse<LoginResponse>.Fail("Invalid refresh token."));
@@ -158,7 +128,7 @@ public class AuthController : ControllerBase
         if (userId != null)
         {
             var refreshTokens = await _context.RefreshTokens
-                .Where(rt => rt.UserId == Guid.Parse(userId) && rt.IsActive)
+                .Where(rt => rt.UserId == Guid.Parse(userId) && !rt.IsRevoked && rt.ExpiresAt > DateTimeOffset.UtcNow)
                 .ToListAsync();
 
             foreach (var token in refreshTokens)
@@ -206,6 +176,30 @@ public class AuthController : ControllerBase
         foreach (var role in roles)
         {
             claims.Add(new Claim(ClaimTypes.Role, role));
+        }
+
+        // Add permission claims
+        var userRoles = await _userManager.GetRolesAsync(user);
+        foreach (var roleName in userRoles)
+        {
+            var role = await _context.Roles.FirstOrDefaultAsync(r => r.Name == roleName);
+            if (role != null)
+            {
+                var permissionIds = await _context.RolePermissions
+                    .Where(rp => rp.RoleId == role.Id)
+                    .Select(rp => rp.PermissionId)
+                    .ToListAsync();
+
+                var permissions = await _context.Permissions
+                    .Where(p => permissionIds.Contains(p.Id))
+                    .Select(p => p.Name)
+                    .ToListAsync();
+
+                foreach (var permission in permissions)
+                {
+                    claims.Add(new Claim("permission", permission));
+                }
+            }
         }
 
         var key = new SymmetricSecurityKey(

@@ -22,7 +22,7 @@ public class LoadsController : ControllerBase
     }
 
     [HttpGet]
-    [Authorize]
+    [Authorize(Policy = "loads.view")]
     public async Task<ActionResult<ApiResponse<PaginatedResponse<LoadResponse>>>> GetAll(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
@@ -96,7 +96,7 @@ public class LoadsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "SuperAdmin,Admin,DispatchManager,Dispatcher")]
+    [Authorize(Policy = "loads.create")]
     public async Task<ActionResult<ApiResponse<LoadResponse>>> Create([FromBody] CreateLoadRequest request)
     {
         var carrier = await _context.Carriers
@@ -159,7 +159,7 @@ public class LoadsController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize]
+    [Authorize(Policy = "loads.view")]
     public async Task<ActionResult<ApiResponse<LoadResponse>>> GetById(Guid id)
     {
         var load = await _context.Loads
@@ -176,7 +176,7 @@ public class LoadsController : ControllerBase
     }
 
     [HttpPatch("{id:guid}")]
-    [Authorize]
+    [Authorize(Policy = "loads.edit")]
     public async Task<ActionResult<ApiResponse<LoadResponse>>> Update(
         Guid id,
         [FromBody] UpdateLoadRequest request)
@@ -229,7 +229,7 @@ public class LoadsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/status")]
-    [Authorize]
+    [Authorize(Policy = "loads.updateStatus")]
     public async Task<ActionResult<ApiResponse<LoadResponse>>> UpdateStatus(
         Guid id,
         [FromBody] LoadStatusUpdateRequest request)
@@ -278,7 +278,7 @@ public class LoadsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/notes")]
-    [Authorize]
+    [Authorize(Policy = "loads.view")]
     public async Task<ActionResult<ApiResponse<LoadNote>>> AddNote(
         Guid id,
         [FromBody] LoadNoteRequest request)
@@ -308,6 +308,48 @@ public class LoadsController : ControllerBase
         var now = DateTimeOffset.UtcNow;
         var unique = Guid.NewGuid().ToString("N")[..4].ToUpper();
         return $"LD-{now:yyMMdd}-{unique}";
+    }
+
+    [HttpGet("{id:guid}/notes")]
+    [Authorize(Policy = "loads.view")]
+    public async Task<ActionResult<ApiResponse<List<LoadNote>>>> GetNotes(Guid id)
+    {
+        var load = await _context.Loads
+            .FirstOrDefaultAsync(l => l.Id == id && !l.IsDeleted);
+
+        if (load == null)
+            return NotFound(ApiResponse<List<LoadNote>>.Fail("Load not found."));
+
+        var notes = await _context.LoadNotes
+            .Where(n => n.LoadId == id)
+            .OrderByDescending(n => n.CreatedAt)
+            .ToListAsync();
+
+        return Ok(ApiResponse<List<LoadNote>>.Ok(notes));
+    }
+
+    [HttpDelete("{id:guid}")]
+    [Authorize(Policy = "loads.edit")]
+    public async Task<ActionResult<ApiResponse<object>>> Delete(Guid id)
+    {
+        var load = await _context.Loads
+            .FirstOrDefaultAsync(l => l.Id == id && !l.IsDeleted);
+
+        if (load == null)
+            return NotFound(ApiResponse<object>.Fail("Load not found."));
+
+        load.IsDeleted = true;
+
+        _context.ActivityLogs.Add(new ActivityLog
+        {
+            Action = "Delete",
+            EntityType = "Load",
+            EntityId = id,
+            Description = $"Load {load.LoadNumber} deleted"
+        });
+
+        await _context.SaveChangesAsync();
+        return Ok(ApiResponse<object>.Ok(new object(), "Load deleted successfully."));
     }
 
     private static LoadResponse MapToResponse(Load load)

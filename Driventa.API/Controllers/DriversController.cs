@@ -21,7 +21,7 @@ public class DriversController : ControllerBase
     }
 
     [HttpGet]
-    [Authorize]
+    [Authorize(Policy = "carriers.view")]
     public async Task<ActionResult<ApiResponse<PaginatedResponse<DriverResponse>>>> GetAll(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
@@ -77,7 +77,7 @@ public class DriversController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "SuperAdmin,Admin,DispatchManager")]
+    [Authorize(Policy = "carriers.create")]
     public async Task<ActionResult<ApiResponse<DriverResponse>>> Create([FromBody] CreateDriverRequest request)
     {
         var carrier = await _context.Carriers
@@ -125,7 +125,7 @@ public class DriversController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize]
+    [Authorize(Policy = "carriers.view")]
     public async Task<ActionResult<ApiResponse<DriverResponse>>> GetById(Guid id)
     {
         var driver = await _context.Drivers
@@ -138,7 +138,7 @@ public class DriversController : ControllerBase
     }
 
     [HttpPatch("{id:guid}")]
-    [Authorize]
+    [Authorize(Policy = "carriers.edit")]
     public async Task<ActionResult<ApiResponse<DriverResponse>>> Update(
         Guid id,
         [FromBody] UpdateDriverRequest request)
@@ -186,5 +186,29 @@ public class DriversController : ControllerBase
             Status = driver.Status,
             CreatedAt = driver.CreatedAt
         };
+    }
+
+    [HttpDelete("{id:guid}")]
+    [Authorize(Policy = "carriers.edit")]
+    public async Task<ActionResult<ApiResponse<object>>> Delete(Guid id)
+    {
+        var driver = await _context.Drivers
+            .FirstOrDefaultAsync(d => d.Id == id && !d.IsDeleted);
+
+        if (driver == null)
+            return NotFound(ApiResponse<object>.Fail("Driver not found."));
+
+        driver.IsDeleted = true;
+
+        _context.ActivityLogs.Add(new ActivityLog
+        {
+            Action = "Delete",
+            EntityType = "Driver",
+            EntityId = id,
+            Description = $"Driver {driver.FirstName} {driver.LastName} deleted"
+        });
+
+        await _context.SaveChangesAsync();
+        return Ok(ApiResponse<object>.Ok(new object(), "Driver deleted successfully."));
     }
 }

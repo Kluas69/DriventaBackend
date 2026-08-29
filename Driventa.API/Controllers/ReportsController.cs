@@ -20,7 +20,7 @@ public class ReportsController : ControllerBase
     }
 
     [HttpGet("loads")]
-    [Authorize(Roles = "SuperAdmin,Admin,DispatchManager,Dispatcher")]
+    [Authorize(Policy = "reports.view")]
     public async Task<ActionResult<ApiResponse<LoadReportResponse>>> GetLoadReport()
     {
         var loads = _context.Loads.Where(l => !l.IsDeleted);
@@ -55,7 +55,7 @@ public class ReportsController : ControllerBase
     }
 
     [HttpGet("revenue")]
-    [Authorize(Roles = "SuperAdmin,Admin,DispatchManager")]
+    [Authorize(Policy = "reports.view")]
     public async Task<ActionResult<ApiResponse<RevenueReportResponse>>> GetRevenueReport()
     {
         var completedLoads = await _context.Loads
@@ -95,7 +95,7 @@ public class ReportsController : ControllerBase
     }
 
     [HttpGet("carriers")]
-    [Authorize(Roles = "SuperAdmin,Admin,DispatchManager")]
+    [Authorize(Policy = "reports.view")]
     public async Task<ActionResult<ApiResponse<List<CarrierReportResponse>>>> GetCarrierReport()
     {
         var carriers = await _context.Carriers
@@ -131,7 +131,7 @@ public class ReportsController : ControllerBase
     }
 
     [HttpGet("dispatchers")]
-    [Authorize(Roles = "SuperAdmin,Admin,DispatchManager")]
+    [Authorize(Policy = "reports.view")]
     public async Task<ActionResult<ApiResponse<List<DispatcherReportResponse>>>> GetDispatcherReport()
     {
         var loads = await _context.Loads

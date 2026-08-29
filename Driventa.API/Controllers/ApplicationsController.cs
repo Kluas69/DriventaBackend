@@ -22,7 +22,7 @@ public class ApplicationsController : ControllerBase
     }
 
     [HttpGet]
-    [Authorize]
+    [Authorize(Policy = "applications.view")]
     public async Task<ActionResult<ApiResponse<PaginatedResponse<Domain.Entities.Application>>>> GetAll(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
@@ -60,7 +60,7 @@ public class ApplicationsController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize]
+    [Authorize(Policy = "applications.view")]
     public async Task<ActionResult<ApiResponse<Domain.Entities.Application>>> GetById(Guid id)
     {
         var application = await _context.Applications
@@ -74,7 +74,7 @@ public class ApplicationsController : ControllerBase
     }
 
     [HttpPatch("{id:guid}")]
-    [Authorize]
+    [Authorize(Policy = "applications.edit")]
     public async Task<ActionResult<ApiResponse<Domain.Entities.Application>>> Update(
         Guid id,
         [FromBody] UpdateApplicationRequest request)
@@ -120,7 +120,7 @@ public class ApplicationsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/assign")]
-    [Authorize(Roles = "SuperAdmin,Admin,DispatchManager")]
+    [Authorize(Policy = "applications.assign")]
     public async Task<ActionResult<ApiResponse<Domain.Entities.Application>>> Assign(
         Guid id,
         [FromBody] AssignApplicationRequest request)
@@ -148,7 +148,7 @@ public class ApplicationsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/notes")]
-    [Authorize]
+    [Authorize(Policy = "applications.view")]
     public async Task<ActionResult<ApiResponse<ApplicationNote>>> AddNote(
         Guid id,
         [FromBody] ApplicationNoteRequest request)
@@ -173,8 +173,26 @@ public class ApplicationsController : ControllerBase
         return Ok(ApiResponse<ApplicationNote>.Ok(note, "Note added successfully."));
     }
 
+    [HttpGet("{id:guid}/notes")]
+    [Authorize(Policy = "applications.view")]
+    public async Task<ActionResult<ApiResponse<List<ApplicationNote>>>> GetNotes(Guid id)
+    {
+        var application = await _context.Applications
+            .FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted);
+
+        if (application == null)
+            return NotFound(ApiResponse<List<ApplicationNote>>.Fail("Application not found."));
+
+        var notes = await _context.ApplicationNotes
+            .Where(n => n.ApplicationId == id)
+            .OrderByDescending(n => n.CreatedAt)
+            .ToListAsync();
+
+        return Ok(ApiResponse<List<ApplicationNote>>.Ok(notes));
+    }
+
     [HttpPost("{id:guid}/convert-to-carrier")]
-    [Authorize(Roles = "SuperAdmin,Admin,DispatchManager")]
+    [Authorize(Policy = "applications.convert")]
     public async Task<ActionResult<ApiResponse<Carrier>>> ConvertToCarrier(
         Guid id,
         [FromBody] ConvertToCarrierRequest request)
@@ -251,5 +269,104 @@ public class ApplicationsController : ControllerBase
             await transaction.RollbackAsync();
             throw;
         }
+    }
+
+    [HttpPost("{id:guid}/contact")]
+    [Authorize(Policy = "applications.edit")]
+    public async Task<ActionResult<ApiResponse<Domain.Entities.Application>>> Contact(Guid id)
+    {
+        var application = await _context.Applications
+            .FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted);
+
+        if (application == null)
+            return NotFound(ApiResponse<Domain.Entities.Application>.Fail("Application not found."));
+
+        application.Status = ApplicationStatus.Contacted;
+        application.ContactedAt = DateTimeOffset.UtcNow;
+
+        _context.ActivityLogs.Add(new ActivityLog
+        {
+            Action = "Contact",
+            EntityType = "Application",
+            EntityId = id,
+            Description = $"Application {application.ApplicationNumber} marked as contacted"
+        });
+
+        await _context.SaveChangesAsync();
+        return Ok(ApiResponse<Domain.Entities.Application>.Ok(application, "Application marked as contacted."));
+    }
+
+    [HttpPost("{id:guid}/approve")]
+    [Authorize(Policy = "applications.edit")]
+    public async Task<ActionResult<ApiResponse<Domain.Entities.Application>>> Approve(Guid id)
+    {
+        var application = await _context.Applications
+            .FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted);
+
+        if (application == null)
+            return NotFound(ApiResponse<Domain.Entities.Application>.Fail("Application not found."));
+
+        application.Status = ApplicationStatus.Approved;
+        application.ApprovedAt = DateTimeOffset.UtcNow;
+
+        _context.ActivityLogs.Add(new ActivityLog
+        {
+            Action = "Approve",
+            EntityType = "Application",
+            EntityId = id,
+            Description = $"Application {application.ApplicationNumber} approved"
+        });
+
+        await _context.SaveChangesAsync();
+        return Ok(ApiResponse<Domain.Entities.Application>.Ok(application, "Application approved successfully."));
+    }
+
+    [HttpPost("{id:guid}/reject")]
+    [Authorize(Policy = "applications.edit")]
+    public async Task<ActionResult<ApiResponse<Domain.Entities.Application>>> Reject(Guid id)
+    {
+        var application = await _context.Applications
+            .FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted);
+
+        if (application == null)
+            return NotFound(ApiResponse<Domain.Entities.Application>.Fail("Application not found."));
+
+        application.Status = ApplicationStatus.Rejected;
+        application.RejectedAt = DateTimeOffset.UtcNow;
+
+        _context.ActivityLogs.Add(new ActivityLog
+        {
+            Action = "Reject",
+            EntityType = "Application",
+            EntityId = id,
+            Description = $"Application {application.ApplicationNumber} rejected"
+        });
+
+        await _context.SaveChangesAsync();
+        return Ok(ApiResponse<Domain.Entities.Application>.Ok(application, "Application rejected."));
+    }
+
+    [HttpDelete("{id:guid}")]
+    [Authorize(Policy = "applications.edit")]
+    public async Task<ActionResult<ApiResponse<object>>> Delete(Guid id)
+    {
+        var application = await _context.Applications
+            .FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted);
+
+        if (application == null)
+            return NotFound(ApiResponse<object>.Fail("Application not found."));
+
+        application.IsDeleted = true;
+
+        _context.ActivityLogs.Add(new ActivityLog
+        {
+            Action = "Delete",
+            EntityType = "Application",
+            EntityId = id,
+            Description = $"Application {application.ApplicationNumber} deleted"
+        });
+
+        await _context.SaveChangesAsync();
+        return Ok(ApiResponse<object>.Ok(new object(), "Application deleted successfully."));
     }
 }

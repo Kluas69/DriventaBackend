@@ -1,0 +1,1741 @@
+{
+  "info": {
+    "name": "Driventa API",
+    "description": "Complete API collection for Driventa Dispatch Management System",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://driventa-production.up.railway.app"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "refreshToken",
+      "value": ""
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.success && json.data) {",
+                  "  pm.collectionVariables.set('accessToken', json.data.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', json.data.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@driventa.com\",\n  \"password\": \"Admin@123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.success && json.data) {",
+                  "  pm.collectionVariables.set('accessToken', json.data.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', json.data.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Auth", "refresh"]
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Auth", "logout"]
+            }
+          }
+        },
+        {
+          "name": "Get Current User (Me)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Auth", "me"]
+            }
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@driventa.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Auth/forgot-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Auth", "forgot-password"]
+            }
+          }
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@driventa.com\",\n  \"token\": \"from-email\",\n  \"newPassword\": \"NewPass123!\",\n  \"confirmPassword\": \"NewPass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Auth/reset-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Auth", "reset-password"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Roles",
+      "item": [
+        {
+          "name": "Get All Roles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Roles",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Roles"]
+            }
+          }
+        },
+        {
+          "name": "Get Role By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Roles/{{roleId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Roles", "{{roleId}}"]
+            }
+          }
+        },
+        {
+          "name": "Create Role",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Senior Dispatcher\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Roles",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Roles"]
+            }
+          }
+        },
+        {
+          "name": "Update Role",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Lead Dispatcher\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Roles/{{roleId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Roles", "{{roleId}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Role",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Roles/{{roleId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Roles", "{{roleId}}"]
+            }
+          }
+        },
+        {
+          "name": "Get All Permissions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Roles/permissions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Roles", "permissions"]
+            }
+          }
+        },
+        {
+          "name": "Update Role Permissions",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"permissionIds\": [\n    \"permission-id-1\",\n    \"permission-id-2\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Roles/{{roleId}}/permissions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Roles", "{{roleId}}", "permissions"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Users?page=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Users"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" },
+                { "key": "search", "value": "", "disabled": true },
+                { "key": "roleId", "value": "", "disabled": true },
+                { "key": "isActive", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get User By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Users", "{{userId}}"]
+            }
+          }
+        },
+        {
+          "name": "Create User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"email\": \"john@driventa.com\",\n  \"password\": \"Password123!\",\n  \"confirmPassword\": \"Password123!\",\n  \"roleId\": \"role-id-here\",\n  \"phoneNumber\": \"+1234567890\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Users",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Users"]
+            }
+          }
+        },
+        {
+          "name": "Update User Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Smith\",\n  \"phoneNumber\": \"+1987654321\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Users", "{{userId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update User Role",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roleId\": \"new-role-id-here\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Users/{{userId}}/role",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Users", "{{userId}}", "role"]
+            }
+          }
+        },
+        {
+          "name": "Update User Status (Activate/Deactivate)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isActive\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Users/{{userId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Users", "{{userId}}", "status"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Applications",
+      "item": [
+        {
+          "name": "Get All Applications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Applications?page=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Applications"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" },
+                { "key": "search", "value": "", "disabled": true },
+                { "key": "status", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Application By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Applications/{{applicationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Applications", "{{applicationId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Application",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"phone\": \"+1234567890\",\n  \"companyName\": \"ABC Trucking\",\n  \"equipmentType\": \"DryVan\",\n  \"truckCount\": 5,\n  \"mcNumber\": \"MC-12345\",\n  \"dotNumber\": \"DOT-67890\",\n  \"preferredLanes\": \"TX to CA\",\n  \"additionalDetails\": \"Experienced carrier\",\n  \"status\": \"Reviewing\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Applications/{{applicationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Applications", "{{applicationId}}"]
+            }
+          }
+        },
+        {
+          "name": "Assign Application",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"user-id-here\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Applications/{{applicationId}}/assign",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Applications", "{{applicationId}}", "assign"]
+            }
+          }
+        },
+        {
+          "name": "Add Application Note",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Application reviewed and approved.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Applications/{{applicationId}}/notes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Applications", "{{applicationId}}", "notes"]
+            }
+          }
+        },
+        {
+          "name": "Get Application Notes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Applications/{{applicationId}}/notes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Applications", "{{applicationId}}", "notes"]
+            }
+          }
+        },
+        {
+          "name": "Contact Application",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Applications/{{applicationId}}/contact",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Applications", "{{applicationId}}", "contact"]
+            }
+          }
+        },
+        {
+          "name": "Approve Application",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Applications/{{applicationId}}/approve",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Applications", "{{applicationId}}", "approve"]
+            }
+          }
+        },
+        {
+          "name": "Reject Application",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Applications/{{applicationId}}/reject",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Applications", "{{applicationId}}", "reject"]
+            }
+          }
+        },
+        {
+          "name": "Convert Application to Carrier",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"assignedDispatcherId\": \"dispatcher-id-or-null\",\n  \"notes\": \"Onboarding notes\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Applications/{{applicationId}}/convert-to-carrier",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Applications", "{{applicationId}}", "convert-to-carrier"]
+            }
+          }
+        },
+        {
+          "name": "Delete Application",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Applications/{{applicationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Applications", "{{applicationId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Carriers",
+      "item": [
+        {
+          "name": "Get All Carriers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Carriers?page=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Carriers"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" },
+                { "key": "search", "value": "", "disabled": true },
+                { "key": "status", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Carrier By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Carriers/{{carrierId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Carriers", "{{carrierId}}"]
+            }
+          }
+        },
+        {
+          "name": "Create Carrier",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"companyName\": \"ABC Trucking LLC\",\n  \"contactName\": \"John Doe\",\n  \"email\": \"contact@abctrucking.com\",\n  \"phone\": \"+1234567890\",\n  \"mcNumber\": \"MC-12345\",\n  \"dotNumber\": \"DOT-67890\",\n  \"addressLine1\": \"123 Main St\",\n  \"addressLine2\": \"Suite 100\",\n  \"city\": \"Dallas\",\n  \"state\": \"TX\",\n  \"zipCode\": \"75201\",\n  \"preferredLanes\": \"TX to CA\",\n  \"notes\": \"Reliable carrier\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Carriers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Carriers"]
+            }
+          }
+        },
+        {
+          "name": "Update Carrier",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"companyName\": \"ABC Trucking LLC\",\n  \"contactName\": \"John Smith\",\n  \"email\": \"newemail@abctrucking.com\",\n  \"phone\": \"+1987654321\",\n  \"mcNumber\": \"MC-12345\",\n  \"dotNumber\": \"DOT-67890\",\n  \"addressLine1\": \"456 Oak Ave\",\n  \"city\": \"Houston\",\n  \"state\": \"TX\",\n  \"zipCode\": \"77001\",\n  \"status\": \"Active\",\n  \"preferredLanes\": \"TX to FL\",\n  \"notes\": \"Updated notes\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Carriers/{{carrierId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Carriers", "{{carrierId}}"]
+            }
+          }
+        },
+        {
+          "name": "Assign Dispatcher to Carrier",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dispatcherId\": \"dispatcher-user-id\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Carriers/{{carrierId}}/assign-dispatcher",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Carriers", "{{carrierId}}", "assign-dispatcher"]
+            }
+          }
+        },
+        {
+          "name": "Get Carrier Loads",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Carriers/{{carrierId}}/loads?page=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Carriers", "{{carrierId}}", "loads"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Carrier Trucks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Carriers/{{carrierId}}/trucks?page=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Carriers", "{{carrierId}}", "trucks"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Carrier Drivers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Carriers/{{carrierId}}/drivers?page=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Carriers", "{{carrierId}}", "drivers"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Carrier Documents",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Carriers/{{carrierId}}/documents?page=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Carriers", "{{carrierId}}", "documents"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Carrier Notes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Carriers/{{carrierId}}/notes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Carriers", "{{carrierId}}", "notes"]
+            }
+          }
+        },
+        {
+          "name": "Add Carrier Note",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Carrier is performing well.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Carriers/{{carrierId}}/notes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Carriers", "{{carrierId}}", "notes"]
+            }
+          }
+        },
+        {
+          "name": "Delete Carrier",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Carriers/{{carrierId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Carriers", "{{carrierId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Brokers",
+      "item": [
+        {
+          "name": "Get All Brokers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Brokers?page=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Brokers"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" },
+                { "key": "search", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Broker By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Brokers/{{brokerId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Brokers", "{{brokerId}}"]
+            }
+          }
+        },
+        {
+          "name": "Create Broker",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"companyName\": \"FastFreight Brokers\",\n  \"contactName\": \"Jane Smith\",\n  \"email\": \"jane@fastfreight.com\",\n  \"phone\": \"+1555123456\",\n  \"mcNumber\": \"MC-99887\",\n  \"address\": \"789 Broker Blvd, Dallas, TX\",\n  \"paymentNotes\": \"Net 30\",\n  \"generalNotes\": \"Reliable broker\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Brokers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Brokers"]
+            }
+          }
+        },
+        {
+          "name": "Update Broker",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"companyName\": \"FastFreight Brokers Inc\",\n  \"contactName\": \"Jane Smith\",\n  \"email\": \"updated@fastfreight.com\",\n  \"phone\": \"+1555987654\",\n  \"mcNumber\": \"MC-99887\",\n  \"address\": \"321 New Blvd, Houston, TX\",\n  \"paymentNotes\": \"Net 15\",\n  \"generalNotes\": \"Updated notes\",\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Brokers/{{brokerId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Brokers", "{{brokerId}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Broker",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Brokers/{{brokerId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Brokers", "{{brokerId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Trucks",
+      "item": [
+        {
+          "name": "Get All Trucks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Trucks?page=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Trucks"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" },
+                { "key": "search", "value": "", "disabled": true },
+                { "key": "carrierId", "value": "", "disabled": true },
+                { "key": "status", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Truck By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Trucks/{{truckId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Trucks", "{{truckId}}"]
+            }
+          }
+        },
+        {
+          "name": "Create Truck",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"carrierId\": \"carrier-id-here\",\n  \"truckNumber\": \"TRK-001\",\n  \"equipmentType\": \"DryVan\",\n  \"make\": \"Freightliner\",\n  \"model\": \"Cascadia\",\n  \"year\": 2024,\n  \"licensePlate\": \"ABC123\",\n  \"licenseState\": \"TX\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Trucks",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Trucks"]
+            }
+          }
+        },
+        {
+          "name": "Update Truck",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"truckNumber\": \"TRK-001\",\n  \"equipmentType\": \"Reefer\",\n  \"make\": \"Peterbilt\",\n  \"model\": \"579\",\n  \"year\": 2025,\n  \"licensePlate\": \"XYZ789\",\n  \"licenseState\": \"CA\",\n  \"status\": \"Available\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Trucks/{{truckId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Trucks", "{{truckId}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Truck",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Trucks/{{truckId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Trucks", "{{truckId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Drivers",
+      "item": [
+        {
+          "name": "Get All Drivers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Drivers?page=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Drivers"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" },
+                { "key": "search", "value": "", "disabled": true },
+                { "key": "carrierId", "value": "", "disabled": true },
+                { "key": "status", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Driver By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Drivers/{{driverId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Drivers", "{{driverId}}"]
+            }
+          }
+        },
+        {
+          "name": "Create Driver",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"carrierId\": \"carrier-id-here\",\n  \"truckId\": \"truck-id-or-null\",\n  \"firstName\": \"Mike\",\n  \"lastName\": \"Johnson\",\n  \"email\": \"mike@abctrucking.com\",\n  \"phone\": \"+1555987654\",\n  \"licenseNumber\": \"DL-123456\",\n  \"licenseState\": \"TX\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Drivers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Drivers"]
+            }
+          }
+        },
+        {
+          "name": "Update Driver",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"truckId\": \"new-truck-id-or-null\",\n  \"firstName\": \"Mike\",\n  \"lastName\": \"Johnson\",\n  \"email\": \"mike.updated@abctrucking.com\",\n  \"phone\": \"+1555111222\",\n  \"licenseNumber\": \"DL-654321\",\n  \"licenseState\": \"CA\",\n  \"status\": \"Available\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Drivers/{{driverId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Drivers", "{{driverId}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Driver",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Drivers/{{driverId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Drivers", "{{driverId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Loads",
+      "item": [
+        {
+          "name": "Get All Loads",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Loads?page=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Loads"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" },
+                { "key": "search", "value": "", "disabled": true },
+                { "key": "status", "value": "", "disabled": true },
+                { "key": "carrierId", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Load By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Loads/{{loadId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Loads", "{{loadId}}"]
+            }
+          }
+        },
+        {
+          "name": "Create Load",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"carrierId\": \"carrier-id-here\",\n  \"truckId\": \"truck-id-or-null\",\n  \"driverId\": \"driver-id-or-null\",\n  \"brokerId\": \"broker-id-or-null\",\n  \"equipmentType\": \"DryVan\",\n  \"pickupCity\": \"Dallas\",\n  \"pickupState\": \"TX\",\n  \"pickupDateTime\": \"2026-09-01T10:00:00Z\",\n  \"deliveryCity\": \"Houston\",\n  \"deliveryState\": \"TX\",\n  \"deliveryDateTime\": \"2026-09-02T10:00:00Z\",\n  \"rate\": 2500.00,\n  \"miles\": 240,\n  \"dispatchFeeType\": \"Percentage\",\n  \"dispatchFeeValue\": 10\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Loads",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Loads"]
+            }
+          }
+        },
+        {
+          "name": "Update Load",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"truckId\": \"truck-id\",\n  \"driverId\": \"driver-id\",\n  \"brokerId\": \"broker-id\",\n  \"pickupCity\": \"Dallas\",\n  \"pickupState\": \"TX\",\n  \"pickupDateTime\": \"2026-09-01T10:00:00Z\",\n  \"deliveryCity\": \"Houston\",\n  \"deliveryState\": \"TX\",\n  \"deliveryDateTime\": \"2026-09-02T10:00:00Z\",\n  \"rate\": 3000.00,\n  \"miles\": 240,\n  \"dispatchFeeType\": \"Flat\",\n  \"dispatchFeeValue\": 300\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Loads/{{loadId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Loads", "{{loadId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Load Status",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"InTransit\",\n  \"notes\": \"Driver picked up load successfully.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Loads/{{loadId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Loads", "{{loadId}}", "status"]
+            }
+          }
+        },
+        {
+          "name": "Add Load Note",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Driver confirmed delivery.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Loads/{{loadId}}/notes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Loads", "{{loadId}}", "notes"]
+            }
+          }
+        },
+        {
+          "name": "Get Load Notes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Loads/{{loadId}}/notes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Loads", "{{loadId}}", "notes"]
+            }
+          }
+        },
+        {
+          "name": "Delete Load",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Loads/{{loadId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Loads", "{{loadId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Documents",
+      "item": [
+        {
+          "name": "Upload Document",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "/path/to/document.pdf"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Documents/upload?documentType=Insurance&carrierId=",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Documents", "upload"],
+              "query": [
+                { "key": "documentType", "value": "Insurance" },
+                { "key": "carrierId", "value": "", "disabled": true },
+                { "key": "loadId", "value": "", "disabled": true },
+                { "key": "driverId", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Document By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Documents/{{documentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Documents", "{{documentId}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Document",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Documents/{{documentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Documents", "{{documentId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Billing",
+      "item": [
+        {
+          "name": "Get All Invoices",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Billing/invoices?page=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Billing", "invoices"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" },
+                { "key": "status", "value": "", "disabled": true },
+                { "key": "carrierId", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Invoice By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Billing/invoices/{{invoiceId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Billing", "invoices", "{{invoiceId}}"]
+            }
+          }
+        },
+        {
+          "name": "Create Invoice",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"carrierId\": \"carrier-id-here\",\n  \"periodStart\": \"2026-08-01T00:00:00Z\",\n  \"periodEnd\": \"2026-08-31T23:59:59Z\",\n  \"taxAmount\": 50.00,\n  \"dueDate\": \"2026-09-15T00:00:00Z\",\n  \"items\": [\n    {\n      \"loadId\": \"load-id-or-null\",\n      \"description\": \"Dispatch service for LD-260829\",\n      \"quantity\": 1,\n      \"unitPrice\": 250.00\n    },\n    {\n      \"description\": \"Admin fee\",\n      \"quantity\": 1,\n      \"unitPrice\": 50.00\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Billing/invoices",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Billing", "invoices"]
+            }
+          }
+        },
+        {
+          "name": "Update Invoice Status",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "1"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Billing/invoices/{{invoiceId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Billing", "invoices", "{{invoiceId}}", "status"]
+            }
+          }
+        },
+        {
+          "name": "Record Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 300.00,\n  \"paymentMethod\": \"BankTransfer\",\n  \"transactionReference\": \"TXN-12345\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Billing/invoices/{{invoiceId}}/payments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Billing", "invoices", "{{invoiceId}}", "payments"]
+            }
+          }
+        },
+        {
+          "name": "Get All Payments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Billing/payments?page=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Billing", "payments"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" },
+                { "key": "invoiceId", "value": "", "disabled": true }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Messages",
+      "item": [
+        {
+          "name": "Get All Conversations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Messages/conversations?page=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Messages", "conversations"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Conversation By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Messages/conversations/{{conversationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Messages", "conversations", "{{conversationId}}"]
+            }
+          }
+        },
+        {
+          "name": "Send Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"conversationId\": \"conversation-id-here\",\n  \"content\": \"Hello, how can I help you?\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Messages"]
+            }
+          }
+        },
+        {
+          "name": "Mark Conversation As Read",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Messages/conversations/{{conversationId}}/read",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Messages", "conversations", "{{conversationId}}", "read"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "Get All Notifications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Notifications?page=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Notifications"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" },
+                { "key": "isRead", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Notification By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Notifications/{{notificationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Notifications", "{{notificationId}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Unread Count",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Notifications/unread-count",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Notifications", "unread-count"]
+            }
+          }
+        },
+        {
+          "name": "Mark Notification As Read",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Notifications/{{notificationId}}/read",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Notifications", "{{notificationId}}", "read"]
+            }
+          }
+        },
+        {
+          "name": "Mark All As Read",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Notifications/read-all",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Notifications", "read-all"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "Get Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Dashboard/summary",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Dashboard", "summary"]
+            }
+          }
+        },
+        {
+          "name": "Get Recent Applications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Dashboard/recent-applications?page=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Dashboard", "recent-applications"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Recent Activity",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Dashboard/recent-activity?page=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Dashboard", "recent-activity"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Load Status Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Dashboard/load-status-summary",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Dashboard", "load-status-summary"]
+            }
+          }
+        },
+        {
+          "name": "Get Revenue Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Dashboard/revenue-summary",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Dashboard", "revenue-summary"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reports",
+      "item": [
+        {
+          "name": "Get Load Report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Reports/loads",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Reports", "loads"]
+            }
+          }
+        },
+        {
+          "name": "Get Revenue Report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Reports/revenue",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Reports", "revenue"]
+            }
+          }
+        },
+        {
+          "name": "Get Carrier Report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Reports/carriers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Reports", "carriers"]
+            }
+          }
+        },
+        {
+          "name": "Get Dispatcher Report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Reports/dispatchers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Reports", "dispatchers"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dispatchers",
+      "item": [
+        {
+          "name": "Get All Dispatchers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Dispatchers?page=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Dispatchers"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" },
+                { "key": "search", "value": "", "disabled": true }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Public API (No Auth Required)",
+      "item": [
+        {
+          "name": "Submit Application",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"phone\": \"+1234567890\",\n  \"companyName\": \"ABC Trucking\",\n  \"equipmentType\": \"DryVan\",\n  \"truckCount\": 5,\n  \"mcNumber\": \"MC-12345\",\n  \"dotNumber\": \"DOT-67890\",\n  \"preferredLanes\": \"TX to CA\",\n  \"additionalDetails\": \"Looking for dispatch services\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/public/applications",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "public", "applications"]
+            }
+          }
+        },
+        {
+          "name": "Create Chat Session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"visitorName\": \"John Doe\",\n  \"visitorEmail\": \"john@example.com\",\n  \"visitorPhone\": \"+1234567890\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/public/chat/session",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "public", "chat", "session"]
+            }
+          }
+        },
+        {
+          "name": "Submit Contact Form",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"phone\": \"+1234567890\",\n  \"subject\": \"Need dispatch service\",\n  \"message\": \"I would like more information about your dispatch services.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/public/contact",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "public", "contact"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

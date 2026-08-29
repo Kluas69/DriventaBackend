@@ -21,7 +21,7 @@ public class TrucksController : ControllerBase
     }
 
     [HttpGet]
-    [Authorize]
+    [Authorize(Policy = "carriers.view")]
     public async Task<ActionResult<ApiResponse<PaginatedResponse<TruckResponse>>>> GetAll(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
@@ -77,7 +77,7 @@ public class TrucksController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "SuperAdmin,Admin,DispatchManager")]
+    [Authorize(Policy = "carriers.create")]
     public async Task<ActionResult<ApiResponse<TruckResponse>>> Create([FromBody] CreateTruckRequest request)
     {
         var carrier = await _context.Carriers
@@ -116,7 +116,7 @@ public class TrucksController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize]
+    [Authorize(Policy = "carriers.view")]
     public async Task<ActionResult<ApiResponse<TruckResponse>>> GetById(Guid id)
     {
         var truck = await _context.Trucks
@@ -129,7 +129,7 @@ public class TrucksController : ControllerBase
     }
 
     [HttpPatch("{id:guid}")]
-    [Authorize]
+    [Authorize(Policy = "carriers.edit")]
     public async Task<ActionResult<ApiResponse<TruckResponse>>> Update(
         Guid id,
         [FromBody] UpdateTruckRequest request)
@@ -177,5 +177,29 @@ public class TrucksController : ControllerBase
             Status = truck.Status,
             CreatedAt = truck.CreatedAt
         };
+    }
+
+    [HttpDelete("{id:guid}")]
+    [Authorize(Policy = "carriers.edit")]
+    public async Task<ActionResult<ApiResponse<object>>> Delete(Guid id)
+    {
+        var truck = await _context.Trucks
+            .FirstOrDefaultAsync(t => t.Id == id && !t.IsDeleted);
+
+        if (truck == null)
+            return NotFound(ApiResponse<object>.Fail("Truck not found."));
+
+        truck.IsDeleted = true;
+
+        _context.ActivityLogs.Add(new ActivityLog
+        {
+            Action = "Delete",
+            EntityType = "Truck",
+            EntityId = id,
+            Description = $"Truck {truck.TruckNumber} deleted"
+        });
+
+        await _context.SaveChangesAsync();
+        return Ok(ApiResponse<object>.Ok(new object(), "Truck deleted successfully."));
     }
 }
