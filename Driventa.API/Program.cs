@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.HttpOverrides;
 using Driventa.API.Filters;
 using Driventa.API.Hubs;
 using Driventa.API.Middleware;
@@ -45,7 +46,8 @@ builder.Services.AddCors(options =>
                 "http://localhost:3000",
                 "http://localhost:5173",
                 "https://driventa.us",
-                "https://dashboard.driventa.us")
+                "https://dashboard.driventa.us",
+                "https://driventabackend-production-906b.up.railway.app")
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
@@ -122,6 +124,12 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
+// Forwarded Headers (Railway proxy support)
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
+
 // Middleware pipeline
 app.UseMiddleware<ExceptionMiddleware>();
 
@@ -134,7 +142,10 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsProduction())
+{
+    app.UseHttpsRedirection();
+}
 app.UseStaticFiles();
 app.UseRateLimiter();
 app.UseCors("Dashboard");
