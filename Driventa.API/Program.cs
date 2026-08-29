@@ -42,15 +42,9 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("Dashboard", policy =>
     {
-        policy.WithOrigins(
-                "http://localhost:3000",
-                "http://localhost:5173",
-                "https://driventa.us",
-                "https://dashboard.driventa.us",
-                "https://driventabackend-production-906b.up.railway.app")
+        policy.SetIsOriginAllowed(_ => true)
             .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials();
+            .AllowAnyMethod();
     });
 });
 

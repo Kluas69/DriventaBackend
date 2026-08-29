@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Driventa.Domain")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+74c27483a5fb6ac51cb83b4ffc252eba3f8b7878")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c321fe0b05b691dc072f1240a4b7ce38ea02a8f0")]
 [assembly: System.Reflection.AssemblyProductAttribute("Driventa.Domain")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Driventa.Domain")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
