@@ -27,7 +27,7 @@ All controllers return a consistent response envelope:
 {
   "success": true,
   "message": "Optional message",
-  "data": { },
+  "data": {},
   "errors": null
 }
 ```
@@ -39,9 +39,7 @@ For paginated responses:
   "success": true,
   "message": null,
   "data": {
-    "items": [
-      { "id": "..." }
-    ],
+    "items": [{ "id": "..." }],
     "page": 1,
     "pageSize": 20,
     "totalCount": 100
@@ -265,9 +263,9 @@ For authenticated dashboard users:
 
 ```js
 const connection = new signalR.HubConnectionBuilder()
-  .withUrl('http://localhost:5165/hubs/chat', {
+  .withUrl("http://localhost:5165/hubs/chat", {
     accessTokenFactory: () => token,
-    withCredentials: false
+    withCredentials: false,
   })
   .withAutomaticReconnect()
   .build();
@@ -277,7 +275,7 @@ For public website visitors:
 
 ```js
 const connection = new signalR.HubConnectionBuilder()
-  .withUrl('http://localhost:5165/hubs/chat')
+  .withUrl("http://localhost:5165/hubs/chat")
   .withAutomaticReconnect()
   .build();
 ```
@@ -287,7 +285,7 @@ const connection = new signalR.HubConnectionBuilder()
 Client method:
 
 ```js
-await connection.invoke('JoinConversation', conversationId);
+await connection.invoke("JoinConversation", conversationId);
 ```
 
 Server validation:
@@ -301,7 +299,7 @@ Server validation:
 Client method:
 
 ```js
-await connection.invoke('SendMessage', conversationId, message);
+await connection.invoke("SendMessage", conversationId, message);
 ```
 
 Server-side behavior:
@@ -318,7 +316,7 @@ Server-side behavior:
 Server sends:
 
 ```js
-connection.on('ReceiveMessage', payload => {
+connection.on("ReceiveMessage", (payload) => {
   console.log(payload);
 });
 ```
@@ -340,13 +338,13 @@ Payload example:
 Client method:
 
 ```js
-await connection.invoke('MarkAsRead', conversationId);
+await connection.invoke("MarkAsRead", conversationId);
 ```
 
 Server broadcasts:
 
 ```js
-connection.on('MessagesRead', conversationId => {
+connection.on("MessagesRead", (conversationId) => {
   // update UI message state
 });
 ```
@@ -374,9 +372,9 @@ This hub is protected with `[Authorize]`.
 
 ```js
 const notificationConnection = new signalR.HubConnectionBuilder()
-  .withUrl('http://localhost:5165/hubs/notifications', {
+  .withUrl("http://localhost:5165/hubs/notifications", {
     accessTokenFactory: () => token,
-    withCredentials: false
+    withCredentials: false,
   })
   .withAutomaticReconnect()
   .build();
@@ -385,7 +383,7 @@ const notificationConnection = new signalR.HubConnectionBuilder()
 ### 8.2 Join personal notification group
 
 ```js
-await notificationConnection.invoke('JoinPersonalGroup');
+await notificationConnection.invoke("JoinPersonalGroup");
 ```
 
 Server behavior:
@@ -398,7 +396,7 @@ Server behavior:
 Server sends to that user’s personal group:
 
 ```js
-notificationConnection.on('ReceiveNotification', payload => {
+notificationConnection.on("ReceiveNotification", (payload) => {
   console.log(payload);
 });
 ```
@@ -575,16 +573,16 @@ POST /api/public/chat/session
 Methods:
 
 ```js
-JoinConversation(conversationId)
-SendMessage(conversationId, message)
-MarkAsRead(conversationId)
+JoinConversation(conversationId);
+SendMessage(conversationId, message);
+MarkAsRead(conversationId);
 ```
 
 Events:
 
 ```js
-ReceiveMessage
-MessagesRead
+ReceiveMessage;
+MessagesRead;
 ```
 
 ### Real-time notification hub
@@ -596,14 +594,14 @@ MessagesRead
 Methods:
 
 ```js
-JoinPersonalGroup()
+JoinPersonalGroup();
 ```
 
 Events:
 
 ```js
-Connected
-ReceiveNotification
+Connected;
+ReceiveNotification;
 ```
 
 ### Notification REST

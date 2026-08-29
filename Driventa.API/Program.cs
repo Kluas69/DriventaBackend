@@ -10,6 +10,8 @@ using Driventa.Infrastructure.Identity;
 using Driventa.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.OpenApi.Models;
+using Driventa.API.Services;
+using Driventa.Application.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,6 +20,7 @@ builder.Services.AddInfrastructure(builder.Configuration);
 
 // SignalR
 builder.Services.AddSignalR();
+builder.Services.AddScoped<INotificationBroadcaster, NotificationBroadcaster>();
 
 // Rate Limiting
 builder.Services.AddRateLimiter(options =>

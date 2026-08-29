@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Driventa.Application.DTOs.Applications;
 using Driventa.Application.DTOs.Common;
+using Driventa.Application.Interfaces;
 using Driventa.Domain.Entities;
 using Driventa.Domain.Enums;
 using Driventa.Infrastructure.Persistence;
@@ -15,10 +16,12 @@ namespace Driventa.API.Controllers;
 public class ApplicationsController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly INotificationService _notificationService;
 
-    public ApplicationsController(AppDbContext context)
+    public ApplicationsController(AppDbContext context, INotificationService notificationService)
     {
         _context = context;
+        _notificationService = notificationService;
     }
 
     [HttpGet]
@@ -248,18 +251,16 @@ public class ApplicationsController : ControllerBase
                 Description = $"Application {application.ApplicationNumber} converted to carrier {carrier.CompanyName}"
             });
 
-            // Step 4: Create notification
-            _context.Notifications.Add(new Notification
-            {
-                UserId = userId != null ? Guid.Parse(userId) : Guid.Empty,
-                Type = NotificationType.CarrierAssigned,
-                Title = "Application Converted",
-                Message = $"Application {application.ApplicationNumber} has been converted to carrier {carrier.CompanyName}.",
-                EntityType = "Carrier",
-                EntityId = carrier.Id
-            });
+            // Step 4: Create and push realtime notification
+            var notificationUserId = userId != null ? Guid.Parse(userId) : Guid.Empty;
+            await _notificationService.CreateNotificationAsync(
+                notificationUserId,
+                NotificationType.CarrierAssigned,
+                "Application Converted",
+                $"Application {application.ApplicationNumber} has been converted to carrier {carrier.CompanyName}.",
+                "Carrier",
+                carrier.Id);
 
-            await _context.SaveChangesAsync();
             await transaction.CommitAsync();
 
             return Ok(ApiResponse<Carrier>.Ok(carrier, "Application converted to carrier successfully."));
