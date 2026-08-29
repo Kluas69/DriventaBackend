@@ -46,7 +46,15 @@ public class MessagesController : ControllerBase
                 IsActive = c.IsActive,
                 StartedAt = c.StartedAt,
                 LastMessageAt = c.LastMessageAt,
-                UnreadCount = c.Messages.Count(m => !m.IsRead)
+                UnreadCount = c.Messages.Count(m => !m.IsRead),
+                LastMessage = c.Messages
+                    .OrderByDescending(m => m.CreatedAt)
+                    .Select(m => m.Content)
+                    .FirstOrDefault(),
+                LastMessageSenderType = c.Messages
+                    .OrderByDescending(m => m.CreatedAt)
+                    .Select(m => (SenderType?)m.SenderType)
+                    .FirstOrDefault()
             })
             .ToListAsync();
 
@@ -70,8 +78,29 @@ public class MessagesController : ControllerBase
         if (conversation == null)
             return NotFound(ApiResponse<ConversationResponse>.Fail("Conversation not found."));
 
-        var unreadCount = await _context.Messages
-            .CountAsync(m => m.ConversationId == id && !m.IsRead);
+        var messages = await _context.Messages
+            .Where(m => m.ConversationId == id)
+            .OrderBy(m => m.CreatedAt)
+            .Select(m => new MessageResponse
+            {
+                Id = m.Id,
+                ConversationId = m.ConversationId,
+                SenderType = m.SenderType,
+                SenderUserId = m.SenderUserId,
+                SenderName = m.SenderType == SenderType.Visitor
+                    ? conversation.VisitorName
+                    : m.SenderUserId.HasValue
+                        ? m.SenderUserId.Value.ToString()
+                        : "System",
+                Content = m.Content,
+                IsRead = m.IsRead,
+                CreatedAt = m.CreatedAt
+            })
+            .ToListAsync();
+
+        var unreadCount = messages.Count(m => !m.IsRead);
+
+        var lastMsg = messages.LastOrDefault();
 
         var response = new ConversationResponse
         {
@@ -84,7 +113,10 @@ public class MessagesController : ControllerBase
             IsActive = conversation.IsActive,
             StartedAt = conversation.StartedAt,
             LastMessageAt = conversation.LastMessageAt,
-            UnreadCount = unreadCount
+            UnreadCount = unreadCount,
+            LastMessage = lastMsg?.Content,
+            LastMessageSenderType = lastMsg?.SenderType,
+            Messages = messages
         };
 
         return Ok(ApiResponse<ConversationResponse>.Ok(response));

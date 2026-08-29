@@ -14,6 +14,9 @@ public class ConversationResponse
     public DateTimeOffset StartedAt { get; set; }
     public DateTimeOffset? LastMessageAt { get; set; }
     public int UnreadCount { get; set; }
+    public string? LastMessage { get; set; }
+    public SenderType? LastMessageSenderType { get; set; }
+    public List<MessageResponse> Messages { get; set; } = new();
 }
 
 public class MessageResponse
