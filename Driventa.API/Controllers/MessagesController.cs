@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Driventa.API.Hubs;
 using Driventa.Application.DTOs.Common;
 using Driventa.Application.DTOs.Messages;
 using Driventa.Domain.Entities;
@@ -6,6 +7,7 @@ using Driventa.Domain.Enums;
 using Driventa.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace Driventa.API.Controllers;
@@ -15,10 +17,12 @@ namespace Driventa.API.Controllers;
 public class MessagesController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly IHubContext<ChatHub> _chatHubContext;
 
-    public MessagesController(AppDbContext context)
+    public MessagesController(AppDbContext context, IHubContext<ChatHub> chatHubContext)
     {
         _context = context;
+        _chatHubContext = chatHubContext;
     }
 
     [HttpGet("conversations")]
@@ -172,6 +176,17 @@ public class MessagesController : ControllerBase
             IsRead = message.IsRead,
             CreatedAt = message.CreatedAt
         };
+
+        await _chatHubContext.Clients
+            .Group(request.ConversationId.ToString())
+            .SendAsync("ReceiveMessage", new
+            {
+                messageId = response.Id,
+                message = response.Content,
+                senderUserId = response.SenderUserId,
+                senderType = response.SenderType,
+                timestamp = response.CreatedAt
+            });
 
         return Ok(ApiResponse<MessageResponse>.Ok(response, "Message sent successfully."));
     }
