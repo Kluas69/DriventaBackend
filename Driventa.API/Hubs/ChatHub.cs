@@ -2,7 +2,9 @@ using System.Security.Claims;
 using Driventa.Application.Interfaces;
 using Driventa.Domain.Entities;
 using Driventa.Domain.Enums;
+using Driventa.Infrastructure.Identity;
 using Driventa.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,12 +14,18 @@ public class ChatHub : Hub
 {
     private readonly AppDbContext _dbContext;
     private readonly INotificationService _notificationService;
+    private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILogger<ChatHub> _logger;
 
-    public ChatHub(AppDbContext dbContext, INotificationService notificationService, ILogger<ChatHub> logger)
+    public ChatHub(
+        AppDbContext dbContext,
+        INotificationService notificationService,
+        UserManager<ApplicationUser> userManager,
+        ILogger<ChatHub> logger)
     {
         _dbContext = dbContext;
         _notificationService = notificationService;
+        _userManager = userManager;
         _logger = logger;
     }
 
@@ -70,17 +78,43 @@ public class ChatHub : Hub
             timestamp = msg.CreatedAt
         });
 
-        // --- Notify assigned admin when visitor sends a message (persisted to DB + SignalR push) ---
-        if (!userId.HasValue && conversation.AssignedToUserId.HasValue)
+        // --- Notify admins when a visitor sends a message (persisted to DB + SignalR push) ---
+        if (!userId.HasValue)
         {
             var preview = message.Length > 100 ? message[..100] + "..." : message;
-            await _notificationService.CreateNotificationAsync(
-                conversation.AssignedToUserId.Value,
-                NotificationType.NewMessage,
-                "New Message",
-                $"{conversation.VisitorName}: {preview}",
-                "Conversation",
-                conversation.Id);
+            if (conversation.AssignedToUserId.HasValue)
+            {
+                await _notificationService.CreateNotificationAsync(
+                    conversation.AssignedToUserId.Value,
+                    NotificationType.NewMessage,
+                    "New Message",
+                    $"{conversation.VisitorName}: {preview}",
+                    "Conversation",
+                    conversation.Id);
+            }
+            else
+            {
+                var adminRoles = new[] { "SuperAdmin", "Admin", "DispatchManager", "Dispatcher" };
+                var notifiedUserIds = new HashSet<Guid>();
+
+                foreach (var roleName in adminRoles)
+                {
+                    var usersInRole = await _userManager.GetUsersInRoleAsync(roleName);
+                    foreach (var user in usersInRole)
+                    {
+                        if (notifiedUserIds.Add(user.Id))
+                        {
+                            await _notificationService.CreateNotificationAsync(
+                                user.Id,
+                                NotificationType.NewMessage,
+                                "New Message",
+                                $"{conversation.VisitorName}: {preview}",
+                                "Conversation",
+                                conversation.Id);
+                        }
+                    }
+                }
+            }
         }
 
         _logger.LogInformation("Message sent in conversation {ConversationId}", conversationId);

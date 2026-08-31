@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\bolt\\Desktop\\DriventaBackend\\Driventa.API\\Driventa.API.csproj": {}
+    "C:\\Users\\bolt\\Desktop\\DriventaBackend\\driventa.api\\Driventa.API.csproj": {}
   },
   "projects": {
-    "C:\\Users\\bolt\\Desktop\\DriventaBackend\\Driventa.API\\Driventa.API.csproj": {
+    "C:\\Users\\bolt\\Desktop\\DriventaBackend\\driventa.api\\Driventa.API.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\bolt\\Desktop\\DriventaBackend\\Driventa.API\\Driventa.API.csproj",
+        "projectUniqueName": "C:\\Users\\bolt\\Desktop\\DriventaBackend\\driventa.api\\Driventa.API.csproj",
         "projectName": "Driventa.API",
-        "projectPath": "C:\\Users\\bolt\\Desktop\\DriventaBackend\\Driventa.API\\Driventa.API.csproj",
+        "projectPath": "C:\\Users\\bolt\\Desktop\\DriventaBackend\\driventa.api\\Driventa.API.csproj",
         "packagesPath": "C:\\Users\\bolt\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\bolt\\Desktop\\DriventaBackend\\Driventa.API\\obj\\",
+        "outputPath": "C:\\Users\\bolt\\Desktop\\DriventaBackend\\driventa.api\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

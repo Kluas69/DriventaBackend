@@ -176,7 +176,7 @@ public static class RoleSeeder
 
         if (existingUser == null)
         {
-            var superAdmin = new ApplicationUser
+            existingUser = new ApplicationUser
             {
                 UserName = superAdminEmail,
                 Email = superAdminEmail,
@@ -187,11 +187,14 @@ public static class RoleSeeder
                 IsActive = true
             };
 
-            var result = await userManager.CreateAsync(superAdmin, "Admin@123");
-            if (result.Succeeded)
-            {
-                await userManager.AddToRoleAsync(superAdmin, "SuperAdmin");
-            }
+            var result = await userManager.CreateAsync(existingUser, "Admin@123");
+            if (!result.Succeeded)
+                return;
+        }
+
+        if (!await userManager.IsInRoleAsync(existingUser, "SuperAdmin"))
+        {
+            await userManager.AddToRoleAsync(existingUser, "SuperAdmin");
         }
     }
 }
