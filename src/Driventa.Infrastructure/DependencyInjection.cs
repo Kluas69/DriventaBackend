@@ -85,7 +85,7 @@ public static class DependencyInjection
                     var path = context.HttpContext.Request.Path;
 
                     if (!string.IsNullOrEmpty(accessToken) &&
-                        (path.StartsWithSegments("/hubs/chat") || path.StartsWithSegments("/hubs/notifications")))
+                        (path.StartsWithSegments("/hubs/chat") || path.StartsWithSegments("/hubs/notifications") || path.StartsWithSegments("/hubs/applications") || path.StartsWithSegments("/hubs/dashboard")))
                     {
                         context.Token = accessToken;
                     }

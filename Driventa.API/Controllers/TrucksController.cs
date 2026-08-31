@@ -1,10 +1,13 @@
+using Driventa.API.Hubs;
 using Driventa.Application.DTOs.Common;
 using Driventa.Application.DTOs.Trucks;
+using Driventa.Application.Interfaces;
 using Driventa.Domain.Entities;
 using Driventa.Domain.Enums;
 using Driventa.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace Driventa.API.Controllers;
@@ -14,10 +17,17 @@ namespace Driventa.API.Controllers;
 public class TrucksController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly INotificationService _notificationService;
+    private readonly IHubContext<DashboardHub> _dashboardHub;
 
-    public TrucksController(AppDbContext context)
+    public TrucksController(
+        AppDbContext context,
+        INotificationService notificationService,
+        IHubContext<DashboardHub> dashboardHub)
     {
         _context = context;
+        _notificationService = notificationService;
+        _dashboardHub = dashboardHub;
     }
 
     [HttpGet]
@@ -111,6 +121,35 @@ public class TrucksController : ControllerBase
 
         await _context.SaveChangesAsync();
 
+        // --- Notify carrier's assigned dispatcher ---
+        if (carrier.AssignedDispatcherId.HasValue)
+        {
+            await _notificationService.CreateNotificationAsync(
+                carrier.AssignedDispatcherId.Value,
+                NotificationType.TruckCreated,
+                "New Truck Added",
+                $"Truck {truck.TruckNumber} ({truck.Year} {truck.Make} {truck.Model}) has been added to {carrier.CompanyName}.",
+                "Truck",
+                truck.Id);
+        }
+
+        // Broadcast to dashboard
+        await _dashboardHub.Clients.Group("dashboard-admins").SendAsync("DashboardUpdate", new
+        {
+            entityType = "Truck",
+            action = "Created",
+            entity = new
+            {
+                truckId = truck.Id,
+                truckNumber = truck.TruckNumber,
+                make = truck.Make,
+                model = truck.Model,
+                year = truck.Year,
+                carrierName = carrier.CompanyName,
+                carrierId = carrier.Id
+            }
+        });
+
         var response = MapToResponse(truck);
         return Ok(ApiResponse<TruckResponse>.Ok(response, "Truck created successfully."));
     }
@@ -140,6 +179,8 @@ public class TrucksController : ControllerBase
         if (truck == null)
             return NotFound(ApiResponse<TruckResponse>.Fail("Truck not found."));
 
+        var oldStatus = truck.Status;
+
         if (request.TruckNumber != null) truck.TruckNumber = request.TruckNumber;
         if (request.EquipmentType.HasValue) truck.EquipmentType = request.EquipmentType.Value;
         if (request.Make != null) truck.Make = request.Make;
@@ -158,6 +199,36 @@ public class TrucksController : ControllerBase
         });
 
         await _context.SaveChangesAsync();
+
+        // Notify dispatcher if status changed
+        if (request.Status.HasValue && request.Status.Value != oldStatus)
+        {
+            var carrier = await _context.Carriers.FirstOrDefaultAsync(c => c.Id == truck.CarrierId);
+            if (carrier?.AssignedDispatcherId.HasValue == true)
+            {
+                await _notificationService.CreateNotificationAsync(
+                    carrier.AssignedDispatcherId.Value,
+                    NotificationType.TruckCreated,
+                    "Truck Status Changed",
+                    $"Truck {truck.TruckNumber} status changed: {oldStatus} → {request.Status.Value}",
+                    "Truck",
+                    truck.Id);
+            }
+        }
+
+        // Broadcast update
+        await _dashboardHub.Clients.Group("dashboard-admins").SendAsync("DashboardUpdate", new
+        {
+            entityType = "Truck",
+            action = "Updated",
+            entity = new
+            {
+                truckId = truck.Id,
+                truckNumber = truck.TruckNumber,
+                status = truck.Status.ToString()
+            }
+        });
+
         return Ok(ApiResponse<TruckResponse>.Ok(MapToResponse(truck), "Truck updated successfully."));
     }
 
@@ -200,6 +271,19 @@ public class TrucksController : ControllerBase
         });
 
         await _context.SaveChangesAsync();
+
+        // Broadcast deletion
+        await _dashboardHub.Clients.Group("dashboard-admins").SendAsync("DashboardUpdate", new
+        {
+            entityType = "Truck",
+            action = "Deleted",
+            entity = new
+            {
+                truckId = truck.Id,
+                truckNumber = truck.TruckNumber
+            }
+        });
+
         return Ok(ApiResponse<object>.Ok(new object(), "Truck deleted successfully."));
     }
 }

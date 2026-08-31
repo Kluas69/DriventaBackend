@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Driventa.Application.Interfaces;
 using Driventa.Domain.Entities;
 using Driventa.Domain.Enums;
 using Driventa.Infrastructure.Persistence;
@@ -10,11 +11,13 @@ namespace Driventa.API.Hubs;
 public class ChatHub : Hub
 {
     private readonly AppDbContext _dbContext;
+    private readonly INotificationBroadcaster _broadcaster;
     private readonly ILogger<ChatHub> _logger;
 
-    public ChatHub(AppDbContext dbContext, ILogger<ChatHub> logger)
+    public ChatHub(AppDbContext dbContext, INotificationBroadcaster broadcaster, ILogger<ChatHub> logger)
     {
         _dbContext = dbContext;
+        _broadcaster = broadcaster;
         _logger = logger;
     }
 
@@ -66,6 +69,18 @@ public class ChatHub : Hub
             senderType = msg.SenderType,
             timestamp = msg.CreatedAt
         });
+
+        // --- Notify assigned admin when visitor sends a message ---
+        if (!userId.HasValue && conversation.AssignedToUserId.HasValue)
+        {
+            var preview = message.Length > 100 ? message[..100] + "..." : message;
+            await _broadcaster.SendToUserAsync(
+                conversation.AssignedToUserId.Value,
+                "New Message",
+                $"{conversation.VisitorName}: {preview}",
+                "Conversation",
+                conversation.Id);
+        }
 
         _logger.LogInformation("Message sent in conversation {ConversationId}", conversationId);
     }

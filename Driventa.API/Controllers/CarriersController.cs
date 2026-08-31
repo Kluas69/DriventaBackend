@@ -1,14 +1,17 @@
+using Driventa.API.Hubs;
 using Driventa.Application.DTOs.Carriers;
 using Driventa.Application.DTOs.Common;
 using Driventa.Application.DTOs.Drivers;
 using Driventa.Application.DTOs.Documents;
 using Driventa.Application.DTOs.Loads;
 using Driventa.Application.DTOs.Trucks;
+using Driventa.Application.Interfaces;
 using Driventa.Domain.Entities;
 using Driventa.Domain.Enums;
 using Driventa.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace Driventa.API.Controllers;
@@ -18,10 +21,17 @@ namespace Driventa.API.Controllers;
 public class CarriersController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly INotificationService _notificationService;
+    private readonly IHubContext<DashboardHub> _dashboardHub;
 
-    public CarriersController(AppDbContext context)
+    public CarriersController(
+        AppDbContext context,
+        INotificationService notificationService,
+        IHubContext<DashboardHub> dashboardHub)
     {
         _context = context;
+        _notificationService = notificationService;
+        _dashboardHub = dashboardHub;
     }
 
     [HttpGet]
@@ -117,6 +127,43 @@ public class CarriersController : ControllerBase
 
         await _context.SaveChangesAsync();
 
+        // --- Notify admins of new carrier ---
+        var adminRoles = new[] { "SuperAdmin", "Admin", "DispatchManager" };
+        foreach (var roleName in adminRoles)
+        {
+            var usersInRole = await _context.Users
+                .Join(_context.UserRoles, u => u.Id, ur => ur.UserId, (u, ur) => new { u, ur })
+                .Join(_context.Roles, x => x.ur.RoleId, r => r.Id, (x, r) => new { x.u, r.Name })
+                .Where(x => x.Name == roleName)
+                .Select(x => x.u.Id)
+                .ToListAsync();
+
+            foreach (var userId in usersInRole)
+            {
+                await _notificationService.CreateNotificationAsync(
+                    userId,
+                    NotificationType.CarrierCreated,
+                    "New Carrier",
+                    $"{carrier.CompanyName} has been added as a new carrier.",
+                    "Carrier",
+                    carrier.Id);
+            }
+        }
+
+        // Broadcast to dashboard
+        await _dashboardHub.Clients.Group("dashboard-admins").SendAsync("DashboardUpdate", new
+        {
+            entityType = "Carrier",
+            action = "Created",
+            entity = new
+            {
+                carrierId = carrier.Id,
+                companyName = carrier.CompanyName,
+                contactName = carrier.ContactName,
+                status = carrier.Status.ToString()
+            }
+        });
+
         var response = MapToResponse(carrier);
         return Ok(ApiResponse<CarrierResponse>.Ok(response, "Carrier created successfully."));
     }
@@ -170,6 +217,20 @@ public class CarriersController : ControllerBase
         });
 
         await _context.SaveChangesAsync();
+
+        // Broadcast update
+        await _dashboardHub.Clients.Group("dashboard-admins").SendAsync("DashboardUpdate", new
+        {
+            entityType = "Carrier",
+            action = "Updated",
+            entity = new
+            {
+                carrierId = carrier.Id,
+                companyName = carrier.CompanyName,
+                status = carrier.Status.ToString()
+            }
+        });
+
         return Ok(ApiResponse<CarrierResponse>.Ok(MapToResponse(carrier), "Carrier updated successfully."));
     }
 
@@ -196,6 +257,28 @@ public class CarriersController : ControllerBase
         });
 
         await _context.SaveChangesAsync();
+
+        // --- Notify the assigned dispatcher ---
+        await _notificationService.CreateNotificationAsync(
+            request.DispatcherId,
+            NotificationType.DispatcherAssigned,
+            "Carrier Assigned",
+            $"{carrier.CompanyName} has been assigned to you.",
+            "Carrier",
+            carrier.Id);
+
+        // Broadcast to dashboard
+        await _dashboardHub.Clients.Group("dashboard-admins").SendAsync("DashboardUpdate", new
+        {
+            entityType = "Carrier",
+            action = "DispatcherAssigned",
+            entity = new
+            {
+                carrierId = carrier.Id,
+                companyName = carrier.CompanyName,
+                dispatcherId = request.DispatcherId
+            }
+        });
 
         return Ok(ApiResponse<CarrierResponse>.Ok(MapToResponse(carrier), "Dispatcher assigned successfully."));
     }
@@ -491,6 +574,19 @@ public class CarriersController : ControllerBase
         });
 
         await _context.SaveChangesAsync();
+
+        // Broadcast deletion
+        await _dashboardHub.Clients.Group("dashboard-admins").SendAsync("DashboardUpdate", new
+        {
+            entityType = "Carrier",
+            action = "Deleted",
+            entity = new
+            {
+                carrierId = carrier.Id,
+                companyName = carrier.CompanyName
+            }
+        });
+
         return Ok(ApiResponse<object>.Ok(new object(), "Carrier deleted successfully."));
     }
 }

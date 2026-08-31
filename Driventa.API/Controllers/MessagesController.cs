@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Driventa.API.Hubs;
 using Driventa.Application.DTOs.Common;
 using Driventa.Application.DTOs.Messages;
+using Driventa.Application.Interfaces;
 using Driventa.Domain.Entities;
 using Driventa.Domain.Enums;
 using Driventa.Infrastructure.Persistence;
@@ -18,11 +19,19 @@ public class MessagesController : ControllerBase
 {
     private readonly AppDbContext _context;
     private readonly IHubContext<ChatHub> _chatHubContext;
+    private readonly IHubContext<DashboardHub> _dashboardHub;
+    private readonly INotificationBroadcaster _broadcaster;
 
-    public MessagesController(AppDbContext context, IHubContext<ChatHub> chatHubContext)
+    public MessagesController(
+        AppDbContext context,
+        IHubContext<ChatHub> chatHubContext,
+        IHubContext<DashboardHub> dashboardHub,
+        INotificationBroadcaster broadcaster)
     {
         _context = context;
         _chatHubContext = chatHubContext;
+        _dashboardHub = dashboardHub;
+        _broadcaster = broadcaster;
     }
 
     [HttpGet("conversations")]
@@ -187,6 +196,21 @@ public class MessagesController : ControllerBase
                 senderType = response.SenderType,
                 timestamp = response.CreatedAt
             });
+
+        // Broadcast new message to dashboard
+        await _dashboardHub.Clients.Group("dashboard-admins").SendAsync("DashboardUpdate", new
+        {
+            entityType = "Message",
+            action = "NewMessage",
+            entity = new
+            {
+                conversationId = conversation.Id,
+                visitorName = conversation.VisitorName,
+                message = request.Content,
+                senderType = "Admin",
+                timestamp = DateTimeOffset.UtcNow
+            }
+        });
 
         return Ok(ApiResponse<MessageResponse>.Ok(response, "Message sent successfully."));
     }

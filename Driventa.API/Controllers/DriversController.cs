@@ -1,10 +1,13 @@
+using Driventa.API.Hubs;
 using Driventa.Application.DTOs.Common;
 using Driventa.Application.DTOs.Drivers;
+using Driventa.Application.Interfaces;
 using Driventa.Domain.Entities;
 using Driventa.Domain.Enums;
 using Driventa.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace Driventa.API.Controllers;
@@ -14,10 +17,17 @@ namespace Driventa.API.Controllers;
 public class DriversController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly INotificationService _notificationService;
+    private readonly IHubContext<DashboardHub> _dashboardHub;
 
-    public DriversController(AppDbContext context)
+    public DriversController(
+        AppDbContext context,
+        INotificationService notificationService,
+        IHubContext<DashboardHub> dashboardHub)
     {
         _context = context;
+        _notificationService = notificationService;
+        _dashboardHub = dashboardHub;
     }
 
     [HttpGet]
@@ -120,6 +130,33 @@ public class DriversController : ControllerBase
 
         await _context.SaveChangesAsync();
 
+        // --- Notify carrier's assigned dispatcher ---
+        if (carrier.AssignedDispatcherId.HasValue)
+        {
+            await _notificationService.CreateNotificationAsync(
+                carrier.AssignedDispatcherId.Value,
+                NotificationType.DriverCreated,
+                "New Driver Added",
+                $"{driver.FirstName} {driver.LastName} has been added to {carrier.CompanyName}.",
+                "Driver",
+                driver.Id);
+        }
+
+        // Broadcast to dashboard
+        await _dashboardHub.Clients.Group("dashboard-admins").SendAsync("DashboardUpdate", new
+        {
+            entityType = "Driver",
+            action = "Created",
+            entity = new
+            {
+                driverId = driver.Id,
+                firstName = driver.FirstName,
+                lastName = driver.LastName,
+                carrierName = carrier.CompanyName,
+                carrierId = carrier.Id
+            }
+        });
+
         var response = MapToResponse(driver);
         return Ok(ApiResponse<DriverResponse>.Ok(response, "Driver created successfully."));
     }
@@ -149,6 +186,8 @@ public class DriversController : ControllerBase
         if (driver == null)
             return NotFound(ApiResponse<DriverResponse>.Fail("Driver not found."));
 
+        var oldStatus = driver.Status;
+
         if (request.TruckId.HasValue) driver.TruckId = request.TruckId;
         if (request.FirstName != null) driver.FirstName = request.FirstName;
         if (request.LastName != null) driver.LastName = request.LastName;
@@ -167,6 +206,37 @@ public class DriversController : ControllerBase
         });
 
         await _context.SaveChangesAsync();
+
+        // Notify dispatcher if status changed
+        if (request.Status.HasValue && request.Status.Value != oldStatus)
+        {
+            var carrier = await _context.Carriers.FirstOrDefaultAsync(c => c.Id == driver.CarrierId);
+            if (carrier?.AssignedDispatcherId.HasValue == true)
+            {
+                await _notificationService.CreateNotificationAsync(
+                    carrier.AssignedDispatcherId.Value,
+                    NotificationType.DriverCreated,
+                    "Driver Status Changed",
+                    $"Driver {driver.FirstName} {driver.LastName} status changed: {oldStatus} → {request.Status.Value}",
+                    "Driver",
+                    driver.Id);
+            }
+        }
+
+        // Broadcast update
+        await _dashboardHub.Clients.Group("dashboard-admins").SendAsync("DashboardUpdate", new
+        {
+            entityType = "Driver",
+            action = "Updated",
+            entity = new
+            {
+                driverId = driver.Id,
+                firstName = driver.FirstName,
+                lastName = driver.LastName,
+                status = driver.Status.ToString()
+            }
+        });
+
         return Ok(ApiResponse<DriverResponse>.Ok(MapToResponse(driver), "Driver updated successfully."));
     }
 
@@ -209,6 +279,20 @@ public class DriversController : ControllerBase
         });
 
         await _context.SaveChangesAsync();
+
+        // Broadcast deletion
+        await _dashboardHub.Clients.Group("dashboard-admins").SendAsync("DashboardUpdate", new
+        {
+            entityType = "Driver",
+            action = "Deleted",
+            entity = new
+            {
+                driverId = driver.Id,
+                firstName = driver.FirstName,
+                lastName = driver.LastName
+            }
+        });
+
         return Ok(ApiResponse<object>.Ok(new object(), "Driver deleted successfully."));
     }
 }

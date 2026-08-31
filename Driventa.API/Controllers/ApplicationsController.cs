@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Driventa.API.Hubs;
 using Driventa.Application.DTOs.Applications;
 using Driventa.Application.DTOs.Common;
 using Driventa.Application.Interfaces;
@@ -7,6 +8,7 @@ using Driventa.Domain.Enums;
 using Driventa.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace Driventa.API.Controllers;
@@ -17,11 +19,19 @@ public class ApplicationsController : ControllerBase
 {
     private readonly AppDbContext _context;
     private readonly INotificationService _notificationService;
+    private readonly IHubContext<ApplicationsHub> _applicationsHub;
+    private readonly IHubContext<DashboardHub> _dashboardHub;
 
-    public ApplicationsController(AppDbContext context, INotificationService notificationService)
+    public ApplicationsController(
+        AppDbContext context,
+        INotificationService notificationService,
+        IHubContext<ApplicationsHub> applicationsHub,
+        IHubContext<DashboardHub> dashboardHub)
     {
         _context = context;
         _notificationService = notificationService;
+        _applicationsHub = applicationsHub;
+        _dashboardHub = dashboardHub;
     }
 
     [HttpGet]
@@ -98,6 +108,7 @@ public class ApplicationsController : ControllerBase
         if (request.DotNumber != null) application.DotNumber = request.DotNumber;
         if (request.PreferredLanes != null) application.PreferredLanes = request.PreferredLanes;
         if (request.AdditionalDetails != null) application.AdditionalDetails = request.AdditionalDetails;
+
         if (request.Status.HasValue)
         {
             var oldStatus = application.Status;
@@ -116,7 +127,57 @@ public class ApplicationsController : ControllerBase
                 EntityId = id,
                 Description = $"Application {application.ApplicationNumber} status changed: {oldStatus} → {request.Status.Value}"
             });
+
+            // --- Status change notifications ---
+            var statusChangeData = new
+            {
+                applicationId = application.Id,
+                applicationNumber = application.ApplicationNumber,
+                companyName = application.CompanyName,
+                fullName = application.FullName,
+                oldStatus = oldStatus.ToString(),
+                newStatus = request.Status.Value.ToString(),
+                timestamp = DateTimeOffset.UtcNow
+            };
+
+            await _applicationsHub.Clients.Group("admins").SendAsync("ApplicationStatusChanged", statusChangeData);
+            await _dashboardHub.Clients.Group("dashboard-admins").SendAsync("DashboardUpdate", new
+            {
+                entityType = "Application",
+                action = "StatusChanged",
+                entity = statusChangeData
+            });
+
+            // Notify assigned user
+            if (application.AssignedToUserId.HasValue)
+            {
+                await _notificationService.CreateNotificationAsync(
+                    application.AssignedToUserId.Value,
+                    NotificationType.ApplicationStatusChanged,
+                    "Application Status Changed",
+                    $"Application {application.ApplicationNumber} status changed: {oldStatus} → {request.Status.Value}",
+                    "Application",
+                    application.Id);
+            }
         }
+
+        // --- General update broadcast ---
+        var updateData = new
+        {
+            applicationId = application.Id,
+            applicationNumber = application.ApplicationNumber,
+            companyName = application.CompanyName,
+            fullName = application.FullName,
+            status = application.Status.ToString()
+        };
+
+        await _applicationsHub.Clients.Group("admins").SendAsync("ApplicationUpdated", updateData);
+        await _dashboardHub.Clients.Group("dashboard-admins").SendAsync("DashboardUpdate", new
+        {
+            entityType = "Application",
+            action = "Updated",
+            entity = updateData
+        });
 
         await _context.SaveChangesAsync();
         return Ok(ApiResponse<Domain.Entities.Application>.Ok(application, "Application updated successfully."));
@@ -146,6 +207,33 @@ public class ApplicationsController : ControllerBase
         });
 
         await _context.SaveChangesAsync();
+
+        // --- Assignment notifications ---
+        var assignData = new
+        {
+            applicationId = application.Id,
+            applicationNumber = application.ApplicationNumber,
+            companyName = application.CompanyName,
+            assignedToUserId = request.UserId,
+            timestamp = DateTimeOffset.UtcNow
+        };
+
+        await _applicationsHub.Clients.Group("admins").SendAsync("ApplicationUpdated", assignData);
+        await _dashboardHub.Clients.Group("dashboard-admins").SendAsync("DashboardUpdate", new
+        {
+            entityType = "Application",
+            action = "Assigned",
+            entity = assignData
+        });
+
+        // Notify the assigned user
+        await _notificationService.CreateNotificationAsync(
+            request.UserId,
+            NotificationType.ApplicationAssigned,
+            "Application Assigned",
+            $"Application {application.ApplicationNumber} ({application.CompanyName}) has been assigned to you.",
+            "Application",
+            application.Id);
 
         return Ok(ApiResponse<Domain.Entities.Application>.Ok(application, "Application assigned successfully."));
     }
@@ -261,6 +349,30 @@ public class ApplicationsController : ControllerBase
                 "Carrier",
                 carrier.Id);
 
+            // Broadcast to admins
+            await _applicationsHub.Clients.Group("admins").SendAsync("ApplicationStatusChanged", new
+            {
+                applicationId = application.Id,
+                applicationNumber = application.ApplicationNumber,
+                companyName = application.CompanyName,
+                oldStatus = "Onboarded",
+                newStatus = "Onboarded",
+                timestamp = DateTimeOffset.UtcNow
+            });
+
+            await _dashboardHub.Clients.Group("dashboard-admins").SendAsync("DashboardUpdate", new
+            {
+                entityType = "Application",
+                action = "ConvertedToCarrier",
+                entity = new
+                {
+                    applicationId = application.Id,
+                    applicationNumber = application.ApplicationNumber,
+                    carrierId = carrier.Id,
+                    carrierName = carrier.CompanyName
+                }
+            });
+
             await transaction.CommitAsync();
 
             return Ok(ApiResponse<Carrier>.Ok(carrier, "Application converted to carrier successfully."));
@@ -282,6 +394,7 @@ public class ApplicationsController : ControllerBase
         if (application == null)
             return NotFound(ApiResponse<Domain.Entities.Application>.Fail("Application not found."));
 
+        var oldStatus = application.Status;
         application.Status = ApplicationStatus.Contacted;
         application.ContactedAt = DateTimeOffset.UtcNow;
 
@@ -294,6 +407,42 @@ public class ApplicationsController : ControllerBase
         });
 
         await _context.SaveChangesAsync();
+
+        // Notify assigned user
+        if (application.AssignedToUserId.HasValue)
+        {
+            await _notificationService.CreateNotificationAsync(
+                application.AssignedToUserId.Value,
+                NotificationType.ApplicationStatusChanged,
+                "Application Contacted",
+                $"Application {application.ApplicationNumber} has been marked as contacted.",
+                "Application",
+                application.Id);
+        }
+
+        // Broadcast
+        await _applicationsHub.Clients.Group("admins").SendAsync("ApplicationStatusChanged", new
+        {
+            applicationId = application.Id,
+            applicationNumber = application.ApplicationNumber,
+            oldStatus = oldStatus.ToString(),
+            newStatus = ApplicationStatus.Contacted.ToString(),
+            timestamp = DateTimeOffset.UtcNow
+        });
+
+        await _dashboardHub.Clients.Group("dashboard-admins").SendAsync("DashboardUpdate", new
+        {
+            entityType = "Application",
+            action = "StatusChanged",
+            entity = new
+            {
+                applicationId = application.Id,
+                applicationNumber = application.ApplicationNumber,
+                oldStatus = oldStatus.ToString(),
+                newStatus = ApplicationStatus.Contacted.ToString()
+            }
+        });
+
         return Ok(ApiResponse<Domain.Entities.Application>.Ok(application, "Application marked as contacted."));
     }
 
@@ -307,6 +456,7 @@ public class ApplicationsController : ControllerBase
         if (application == null)
             return NotFound(ApiResponse<Domain.Entities.Application>.Fail("Application not found."));
 
+        var oldStatus = application.Status;
         application.Status = ApplicationStatus.Approved;
         application.ApprovedAt = DateTimeOffset.UtcNow;
 
@@ -319,6 +469,42 @@ public class ApplicationsController : ControllerBase
         });
 
         await _context.SaveChangesAsync();
+
+        // Notify assigned user
+        if (application.AssignedToUserId.HasValue)
+        {
+            await _notificationService.CreateNotificationAsync(
+                application.AssignedToUserId.Value,
+                NotificationType.ApplicationStatusChanged,
+                "Application Approved",
+                $"Application {application.ApplicationNumber} has been approved.",
+                "Application",
+                application.Id);
+        }
+
+        // Broadcast
+        await _applicationsHub.Clients.Group("admins").SendAsync("ApplicationStatusChanged", new
+        {
+            applicationId = application.Id,
+            applicationNumber = application.ApplicationNumber,
+            oldStatus = oldStatus.ToString(),
+            newStatus = ApplicationStatus.Approved.ToString(),
+            timestamp = DateTimeOffset.UtcNow
+        });
+
+        await _dashboardHub.Clients.Group("dashboard-admins").SendAsync("DashboardUpdate", new
+        {
+            entityType = "Application",
+            action = "StatusChanged",
+            entity = new
+            {
+                applicationId = application.Id,
+                applicationNumber = application.ApplicationNumber,
+                oldStatus = oldStatus.ToString(),
+                newStatus = ApplicationStatus.Approved.ToString()
+            }
+        });
+
         return Ok(ApiResponse<Domain.Entities.Application>.Ok(application, "Application approved successfully."));
     }
 
@@ -332,6 +518,7 @@ public class ApplicationsController : ControllerBase
         if (application == null)
             return NotFound(ApiResponse<Domain.Entities.Application>.Fail("Application not found."));
 
+        var oldStatus = application.Status;
         application.Status = ApplicationStatus.Rejected;
         application.RejectedAt = DateTimeOffset.UtcNow;
 
@@ -344,6 +531,42 @@ public class ApplicationsController : ControllerBase
         });
 
         await _context.SaveChangesAsync();
+
+        // Notify assigned user
+        if (application.AssignedToUserId.HasValue)
+        {
+            await _notificationService.CreateNotificationAsync(
+                application.AssignedToUserId.Value,
+                NotificationType.ApplicationStatusChanged,
+                "Application Rejected",
+                $"Application {application.ApplicationNumber} has been rejected.",
+                "Application",
+                application.Id);
+        }
+
+        // Broadcast
+        await _applicationsHub.Clients.Group("admins").SendAsync("ApplicationStatusChanged", new
+        {
+            applicationId = application.Id,
+            applicationNumber = application.ApplicationNumber,
+            oldStatus = oldStatus.ToString(),
+            newStatus = ApplicationStatus.Rejected.ToString(),
+            timestamp = DateTimeOffset.UtcNow
+        });
+
+        await _dashboardHub.Clients.Group("dashboard-admins").SendAsync("DashboardUpdate", new
+        {
+            entityType = "Application",
+            action = "StatusChanged",
+            entity = new
+            {
+                applicationId = application.Id,
+                applicationNumber = application.ApplicationNumber,
+                oldStatus = oldStatus.ToString(),
+                newStatus = ApplicationStatus.Rejected.ToString()
+            }
+        });
+
         return Ok(ApiResponse<Domain.Entities.Application>.Ok(application, "Application rejected."));
     }
 
@@ -368,6 +591,26 @@ public class ApplicationsController : ControllerBase
         });
 
         await _context.SaveChangesAsync();
+
+        // Broadcast deletion
+        await _applicationsHub.Clients.Group("admins").SendAsync("ApplicationDeleted", new
+        {
+            applicationId = application.Id,
+            applicationNumber = application.ApplicationNumber,
+            timestamp = DateTimeOffset.UtcNow
+        });
+
+        await _dashboardHub.Clients.Group("dashboard-admins").SendAsync("DashboardUpdate", new
+        {
+            entityType = "Application",
+            action = "Deleted",
+            entity = new
+            {
+                applicationId = application.Id,
+                applicationNumber = application.ApplicationNumber
+            }
+        });
+
         return Ok(ApiResponse<object>.Ok(new object(), "Application deleted successfully."));
     }
 }

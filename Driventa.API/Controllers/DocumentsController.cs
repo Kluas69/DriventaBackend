@@ -1,11 +1,14 @@
 using System.Security.Claims;
+using Driventa.API.Hubs;
 using Driventa.Application.DTOs.Common;
 using Driventa.Application.DTOs.Documents;
+using Driventa.Application.Interfaces;
 using Driventa.Domain.Entities;
 using Driventa.Domain.Enums;
 using Driventa.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace Driventa.API.Controllers;
@@ -16,11 +19,19 @@ public class DocumentsController : ControllerBase
 {
     private readonly AppDbContext _context;
     private readonly IWebHostEnvironment _env;
+    private readonly INotificationService _notificationService;
+    private readonly IHubContext<DashboardHub> _dashboardHub;
 
-    public DocumentsController(AppDbContext context, IWebHostEnvironment env)
+    public DocumentsController(
+        AppDbContext context,
+        IWebHostEnvironment env,
+        INotificationService notificationService,
+        IHubContext<DashboardHub> dashboardHub)
     {
         _context = context;
         _env = env;
+        _notificationService = notificationService;
+        _dashboardHub = dashboardHub;
     }
 
     [HttpPost("upload")]
@@ -76,6 +87,65 @@ public class DocumentsController : ControllerBase
 
         await _context.SaveChangesAsync();
 
+        // --- Notify the carrier's assigned dispatcher ---
+        Guid? targetDispatcherId = null;
+        string entityName = "";
+
+        if (carrierId.HasValue)
+        {
+            var carrier = await _context.Carriers.FirstOrDefaultAsync(c => c.Id == carrierId.Value);
+            if (carrier != null)
+            {
+                targetDispatcherId = carrier.AssignedDispatcherId;
+                entityName = carrier.CompanyName;
+            }
+        }
+        else if (loadId.HasValue)
+        {
+            var load = await _context.Loads.Include(l => l.Carrier).FirstOrDefaultAsync(l => l.Id == loadId.Value);
+            if (load?.Carrier != null)
+            {
+                targetDispatcherId = load.Carrier.AssignedDispatcherId;
+                entityName = $"Load {load.LoadNumber}";
+            }
+        }
+        else if (driverId.HasValue)
+        {
+            var driver = await _context.Drivers.Include(d => d.Carrier).FirstOrDefaultAsync(d => d.Id == driverId.Value);
+            if (driver?.Carrier != null)
+            {
+                targetDispatcherId = driver.Carrier.AssignedDispatcherId;
+                entityName = $"{driver.FirstName} {driver.LastName}";
+            }
+        }
+
+        if (targetDispatcherId.HasValue)
+        {
+            await _notificationService.CreateNotificationAsync(
+                targetDispatcherId.Value,
+                NotificationType.DocumentUploaded,
+                "Document Uploaded",
+                $"{file.FileName} ({documentType}) uploaded for {entityName}.",
+                "Document",
+                document.Id);
+        }
+
+        // Broadcast to dashboard
+        await _dashboardHub.Clients.Group("dashboard-admins").SendAsync("DashboardUpdate", new
+        {
+            entityType = "Document",
+            action = "Uploaded",
+            entity = new
+            {
+                documentId = document.Id,
+                fileName = document.FileName,
+                documentType = document.DocumentType.ToString(),
+                carrierId = document.CarrierId,
+                loadId = document.LoadId,
+                driverId = document.DriverId
+            }
+        });
+
         var response = MapToResponse(document);
         return Ok(ApiResponse<DocumentResponse>.Ok(response, "Document uploaded successfully."));
     }
@@ -122,6 +192,18 @@ public class DocumentsController : ControllerBase
         });
 
         await _context.SaveChangesAsync();
+
+        // Broadcast deletion
+        await _dashboardHub.Clients.Group("dashboard-admins").SendAsync("DashboardUpdate", new
+        {
+            entityType = "Document",
+            action = "Deleted",
+            entity = new
+            {
+                documentId = document.Id,
+                fileName = document.FileName
+            }
+        });
 
         return Ok(ApiResponse<object>.Ok(new { }, "Document deleted successfully."));
     }

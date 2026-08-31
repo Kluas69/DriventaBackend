@@ -1,11 +1,14 @@
 using System.Security.Claims;
+using Driventa.API.Hubs;
 using Driventa.Application.DTOs.Common;
 using Driventa.Application.DTOs.Loads;
+using Driventa.Application.Interfaces;
 using Driventa.Domain.Entities;
 using Driventa.Domain.Enums;
 using Driventa.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace Driventa.API.Controllers;
@@ -15,10 +18,17 @@ namespace Driventa.API.Controllers;
 public class LoadsController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly INotificationService _notificationService;
+    private readonly IHubContext<DashboardHub> _dashboardHub;
 
-    public LoadsController(AppDbContext context)
+    public LoadsController(
+        AppDbContext context,
+        INotificationService notificationService,
+        IHubContext<DashboardHub> dashboardHub)
     {
         _context = context;
+        _notificationService = notificationService;
+        _dashboardHub = dashboardHub;
     }
 
     [HttpGet]
@@ -154,6 +164,37 @@ public class LoadsController : ControllerBase
         // Reload with navigation properties for response
         await _context.Entry(load).Reference(l => l.Carrier).LoadAsync();
 
+        // --- Notify carrier's assigned dispatcher ---
+        if (carrier.AssignedDispatcherId.HasValue)
+        {
+            await _notificationService.CreateNotificationAsync(
+                carrier.AssignedDispatcherId.Value,
+                NotificationType.LoadCreated,
+                "New Load Assigned",
+                $"Load {load.LoadNumber} ({load.PickupCity}, {load.PickupState} → {load.DeliveryCity}, {load.DeliveryState}) has been assigned to {carrier.CompanyName}.",
+                "Load",
+                load.Id);
+        }
+
+        // Broadcast to dashboard
+        await _dashboardHub.Clients.Group("dashboard-admins").SendAsync("DashboardUpdate", new
+        {
+            entityType = "Load",
+            action = "Created",
+            entity = new
+            {
+                loadId = load.Id,
+                loadNumber = load.LoadNumber,
+                carrierName = carrier.CompanyName,
+                pickupCity = load.PickupCity,
+                pickupState = load.PickupState,
+                deliveryCity = load.DeliveryCity,
+                deliveryState = load.DeliveryState,
+                rate = load.Rate,
+                status = load.Status.ToString()
+            }
+        });
+
         var response = MapToResponse(load);
         return Ok(ApiResponse<LoadResponse>.Ok(response, "Load created successfully."));
     }
@@ -225,6 +266,20 @@ public class LoadsController : ControllerBase
         });
 
         await _context.SaveChangesAsync();
+
+        // Broadcast update
+        await _dashboardHub.Clients.Group("dashboard-admins").SendAsync("DashboardUpdate", new
+        {
+            entityType = "Load",
+            action = "Updated",
+            entity = new
+            {
+                loadId = load.Id,
+                loadNumber = load.LoadNumber,
+                status = load.Status.ToString()
+            }
+        });
+
         return Ok(ApiResponse<LoadResponse>.Ok(MapToResponse(load), "Load updated successfully."));
     }
 
@@ -244,6 +299,7 @@ public class LoadsController : ControllerBase
         if (load == null)
             return NotFound(ApiResponse<LoadResponse>.Fail("Load not found."));
 
+        var oldStatus = load.Status;
         load.Status = request.Status;
 
         if (request.Status == LoadStatus.Booked)
@@ -273,6 +329,34 @@ public class LoadsController : ControllerBase
         });
 
         await _context.SaveChangesAsync();
+
+        // --- Notify carrier's assigned dispatcher of status change ---
+        if (load.Carrier?.AssignedDispatcherId.HasValue == true)
+        {
+            await _notificationService.CreateNotificationAsync(
+                load.Carrier.AssignedDispatcherId.Value,
+                NotificationType.LoadStatusChanged,
+                "Load Status Updated",
+                $"Load {load.LoadNumber} status changed: {oldStatus} → {request.Status}",
+                "Load",
+                load.Id);
+        }
+
+        // Broadcast status change
+        await _dashboardHub.Clients.Group("dashboard-admins").SendAsync("DashboardUpdate", new
+        {
+            entityType = "Load",
+            action = "StatusChanged",
+            entity = new
+            {
+                loadId = load.Id,
+                loadNumber = load.LoadNumber,
+                carrierName = load.Carrier?.CompanyName,
+                oldStatus = oldStatus.ToString(),
+                newStatus = request.Status.ToString(),
+                timestamp = DateTimeOffset.UtcNow
+            }
+        });
 
         return Ok(ApiResponse<LoadResponse>.Ok(MapToResponse(load), "Load status updated successfully."));
     }
@@ -349,6 +433,19 @@ public class LoadsController : ControllerBase
         });
 
         await _context.SaveChangesAsync();
+
+        // Broadcast deletion
+        await _dashboardHub.Clients.Group("dashboard-admins").SendAsync("DashboardUpdate", new
+        {
+            entityType = "Load",
+            action = "Deleted",
+            entity = new
+            {
+                loadId = load.Id,
+                loadNumber = load.LoadNumber
+            }
+        });
+
         return Ok(ApiResponse<object>.Ok(new object(), "Load deleted successfully."));
     }
 

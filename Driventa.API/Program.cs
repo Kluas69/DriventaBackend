@@ -150,6 +150,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapHub<ChatHub>("/hubs/chat");
 app.MapHub<NotificationHub>("/hubs/notifications");
+app.MapHub<ApplicationsHub>("/hubs/applications");
+app.MapHub<DashboardHub>("/hubs/dashboard");
 app.MapControllers();
 
 app.Run();
