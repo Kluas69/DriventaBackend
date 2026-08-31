@@ -5,8 +5,10 @@ using Driventa.Application.DTOs.Messages;
 using Driventa.Application.Interfaces;
 using Driventa.Domain.Entities;
 using Driventa.Domain.Enums;
+using Driventa.Infrastructure.Identity;
 using Driventa.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -20,18 +22,21 @@ public class MessagesController : ControllerBase
     private readonly AppDbContext _context;
     private readonly IHubContext<ChatHub> _chatHubContext;
     private readonly IHubContext<DashboardHub> _dashboardHub;
-    private readonly INotificationBroadcaster _broadcaster;
+    private readonly INotificationService _notificationService;
+    private readonly UserManager<ApplicationUser> _userManager;
 
     public MessagesController(
         AppDbContext context,
         IHubContext<ChatHub> chatHubContext,
         IHubContext<DashboardHub> dashboardHub,
-        INotificationBroadcaster broadcaster)
+        INotificationService notificationService,
+        UserManager<ApplicationUser> userManager)
     {
         _context = context;
         _chatHubContext = chatHubContext;
         _dashboardHub = dashboardHub;
-        _broadcaster = broadcaster;
+        _notificationService = notificationService;
+        _userManager = userManager;
     }
 
     [HttpGet("conversations")]
@@ -211,6 +216,37 @@ public class MessagesController : ControllerBase
                 timestamp = DateTimeOffset.UtcNow
             }
         });
+
+        // --- Persist notification for assigned user or all admins ---
+        var preview = request.Content.Length > 100 ? request.Content[..100] + "..." : request.Content;
+        if (conversation.AssignedToUserId.HasValue)
+        {
+            await _notificationService.CreateNotificationAsync(
+                conversation.AssignedToUserId.Value,
+                NotificationType.NewMessage,
+                "Message Sent",
+                $"Message sent to {conversation.VisitorName}: {preview}",
+                "Conversation",
+                conversation.Id);
+        }
+        else
+        {
+            var adminRoles = new[] { "SuperAdmin", "Admin", "DispatchManager", "Dispatcher" };
+            foreach (var roleName in adminRoles)
+            {
+                var usersInRole = await _userManager.GetUsersInRoleAsync(roleName);
+                foreach (var user in usersInRole)
+                {
+                    await _notificationService.CreateNotificationAsync(
+                        user.Id,
+                        NotificationType.NewMessage,
+                        "Message Sent",
+                        $"Admin {userName} sent a message to {conversation.VisitorName}: {preview}",
+                        "Conversation",
+                        conversation.Id);
+                }
+            }
+        }
 
         return Ok(ApiResponse<MessageResponse>.Ok(response, "Message sent successfully."));
     }

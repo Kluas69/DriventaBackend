@@ -5,8 +5,10 @@ using Driventa.Application.DTOs.Common;
 using Driventa.Application.Interfaces;
 using Driventa.Domain.Entities;
 using Driventa.Domain.Enums;
+using Driventa.Infrastructure.Identity;
 using Driventa.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -21,17 +23,20 @@ public class ApplicationsController : ControllerBase
     private readonly INotificationService _notificationService;
     private readonly IHubContext<ApplicationsHub> _applicationsHub;
     private readonly IHubContext<DashboardHub> _dashboardHub;
+    private readonly UserManager<ApplicationUser> _userManager;
 
     public ApplicationsController(
         AppDbContext context,
         INotificationService notificationService,
         IHubContext<ApplicationsHub> applicationsHub,
-        IHubContext<DashboardHub> dashboardHub)
+        IHubContext<DashboardHub> dashboardHub,
+        UserManager<ApplicationUser> userManager)
     {
         _context = context;
         _notificationService = notificationService;
         _applicationsHub = applicationsHub;
         _dashboardHub = dashboardHub;
+        _userManager = userManager;
     }
 
     [HttpGet]
@@ -148,7 +153,7 @@ public class ApplicationsController : ControllerBase
                 entity = statusChangeData
             });
 
-            // Notify assigned user
+            // Notify assigned user, or all admins as fallback
             if (application.AssignedToUserId.HasValue)
             {
                 await _notificationService.CreateNotificationAsync(
@@ -158,6 +163,24 @@ public class ApplicationsController : ControllerBase
                     $"Application {application.ApplicationNumber} status changed: {oldStatus} → {request.Status.Value}",
                     "Application",
                     application.Id);
+            }
+            else
+            {
+                var adminRoles = new[] { "SuperAdmin", "Admin", "DispatchManager", "Dispatcher" };
+                foreach (var roleName in adminRoles)
+                {
+                    var usersInRole = await _userManager.GetUsersInRoleAsync(roleName);
+                    foreach (var user in usersInRole)
+                    {
+                        await _notificationService.CreateNotificationAsync(
+                            user.Id,
+                            NotificationType.ApplicationStatusChanged,
+                            "Application Status Changed",
+                            $"Application {application.ApplicationNumber} ({application.CompanyName}) status changed: {oldStatus} → {request.Status.Value}",
+                            "Application",
+                            application.Id);
+                    }
+                }
             }
         }
 
@@ -339,15 +362,22 @@ public class ApplicationsController : ControllerBase
                 Description = $"Application {application.ApplicationNumber} converted to carrier {carrier.CompanyName}"
             });
 
-            // Step 4: Create and push realtime notification
-            var notificationUserId = userId != null ? Guid.Parse(userId) : Guid.Empty;
-            await _notificationService.CreateNotificationAsync(
-                notificationUserId,
-                NotificationType.CarrierAssigned,
-                "Application Converted",
-                $"Application {application.ApplicationNumber} has been converted to carrier {carrier.CompanyName}.",
-                "Carrier",
-                carrier.Id);
+            // Step 4: Create and push realtime notification to all admin/dispatch users
+            var adminRoles = new[] { "SuperAdmin", "Admin", "DispatchManager", "Dispatcher" };
+            foreach (var roleName in adminRoles)
+            {
+                var usersInRole = await _userManager.GetUsersInRoleAsync(roleName);
+                foreach (var user in usersInRole)
+                {
+                    await _notificationService.CreateNotificationAsync(
+                        user.Id,
+                        NotificationType.CarrierAssigned,
+                        "Application Converted",
+                        $"Application {application.ApplicationNumber} has been converted to carrier {carrier.CompanyName}.",
+                        "Carrier",
+                        carrier.Id);
+                }
+            }
 
             // Broadcast to admins
             await _applicationsHub.Clients.Group("admins").SendAsync("ApplicationStatusChanged", new
@@ -408,7 +438,7 @@ public class ApplicationsController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        // Notify assigned user
+        // Notify assigned user, or all admins as fallback
         if (application.AssignedToUserId.HasValue)
         {
             await _notificationService.CreateNotificationAsync(
@@ -418,6 +448,24 @@ public class ApplicationsController : ControllerBase
                 $"Application {application.ApplicationNumber} has been marked as contacted.",
                 "Application",
                 application.Id);
+        }
+        else
+        {
+            var adminRoles = new[] { "SuperAdmin", "Admin", "DispatchManager", "Dispatcher" };
+            foreach (var roleName in adminRoles)
+            {
+                var usersInRole = await _userManager.GetUsersInRoleAsync(roleName);
+                foreach (var user in usersInRole)
+                {
+                    await _notificationService.CreateNotificationAsync(
+                        user.Id,
+                        NotificationType.ApplicationStatusChanged,
+                        "Application Contacted",
+                        $"Application {application.ApplicationNumber} ({application.CompanyName}) has been marked as contacted.",
+                        "Application",
+                        application.Id);
+                }
+            }
         }
 
         // Broadcast
@@ -470,7 +518,7 @@ public class ApplicationsController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        // Notify assigned user
+        // Notify assigned user, or all admins as fallback
         if (application.AssignedToUserId.HasValue)
         {
             await _notificationService.CreateNotificationAsync(
@@ -480,6 +528,24 @@ public class ApplicationsController : ControllerBase
                 $"Application {application.ApplicationNumber} has been approved.",
                 "Application",
                 application.Id);
+        }
+        else
+        {
+            var adminRoles = new[] { "SuperAdmin", "Admin", "DispatchManager", "Dispatcher" };
+            foreach (var roleName in adminRoles)
+            {
+                var usersInRole = await _userManager.GetUsersInRoleAsync(roleName);
+                foreach (var user in usersInRole)
+                {
+                    await _notificationService.CreateNotificationAsync(
+                        user.Id,
+                        NotificationType.ApplicationStatusChanged,
+                        "Application Approved",
+                        $"Application {application.ApplicationNumber} ({application.CompanyName}) has been approved.",
+                        "Application",
+                        application.Id);
+                }
+            }
         }
 
         // Broadcast
@@ -532,7 +598,7 @@ public class ApplicationsController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        // Notify assigned user
+        // Notify assigned user, or all admins as fallback
         if (application.AssignedToUserId.HasValue)
         {
             await _notificationService.CreateNotificationAsync(
@@ -542,6 +608,24 @@ public class ApplicationsController : ControllerBase
                 $"Application {application.ApplicationNumber} has been rejected.",
                 "Application",
                 application.Id);
+        }
+        else
+        {
+            var adminRoles = new[] { "SuperAdmin", "Admin", "DispatchManager", "Dispatcher" };
+            foreach (var roleName in adminRoles)
+            {
+                var usersInRole = await _userManager.GetUsersInRoleAsync(roleName);
+                foreach (var user in usersInRole)
+                {
+                    await _notificationService.CreateNotificationAsync(
+                        user.Id,
+                        NotificationType.ApplicationStatusChanged,
+                        "Application Rejected",
+                        $"Application {application.ApplicationNumber} ({application.CompanyName}) has been rejected.",
+                        "Application",
+                        application.Id);
+                }
+            }
         }
 
         // Broadcast

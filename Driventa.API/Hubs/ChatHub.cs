@@ -11,13 +11,13 @@ namespace Driventa.API.Hubs;
 public class ChatHub : Hub
 {
     private readonly AppDbContext _dbContext;
-    private readonly INotificationBroadcaster _broadcaster;
+    private readonly INotificationService _notificationService;
     private readonly ILogger<ChatHub> _logger;
 
-    public ChatHub(AppDbContext dbContext, INotificationBroadcaster broadcaster, ILogger<ChatHub> logger)
+    public ChatHub(AppDbContext dbContext, INotificationService notificationService, ILogger<ChatHub> logger)
     {
         _dbContext = dbContext;
-        _broadcaster = broadcaster;
+        _notificationService = notificationService;
         _logger = logger;
     }
 
@@ -70,12 +70,13 @@ public class ChatHub : Hub
             timestamp = msg.CreatedAt
         });
 
-        // --- Notify assigned admin when visitor sends a message ---
+        // --- Notify assigned admin when visitor sends a message (persisted to DB + SignalR push) ---
         if (!userId.HasValue && conversation.AssignedToUserId.HasValue)
         {
             var preview = message.Length > 100 ? message[..100] + "..." : message;
-            await _broadcaster.SendToUserAsync(
+            await _notificationService.CreateNotificationAsync(
                 conversation.AssignedToUserId.Value,
+                NotificationType.NewMessage,
                 "New Message",
                 $"{conversation.VisitorName}: {preview}",
                 "Conversation",

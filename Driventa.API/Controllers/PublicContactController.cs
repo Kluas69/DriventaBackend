@@ -1,8 +1,14 @@
+using Driventa.API.Hubs;
 using Driventa.Application.DTOs.Common;
+using Driventa.Application.Interfaces;
 using Driventa.Domain.Entities;
+using Driventa.Domain.Enums;
+using Driventa.Infrastructure.Identity;
 using Driventa.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.SignalR;
 
 namespace Driventa.API.Controllers;
 
@@ -12,10 +18,20 @@ namespace Driventa.API.Controllers;
 public class PublicContactController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly INotificationService _notificationService;
+    private readonly IHubContext<DashboardHub> _dashboardHub;
+    private readonly UserManager<ApplicationUser> _userManager;
 
-    public PublicContactController(AppDbContext context)
+    public PublicContactController(
+        AppDbContext context,
+        INotificationService notificationService,
+        IHubContext<DashboardHub> dashboardHub,
+        UserManager<ApplicationUser> userManager)
     {
         _context = context;
+        _notificationService = notificationService;
+        _dashboardHub = dashboardHub;
+        _userManager = userManager;
     }
 
     [HttpPost]
@@ -39,6 +55,40 @@ public class PublicContactController : ControllerBase
 
         _context.ActivityLogs.Add(contactMessage);
         await _context.SaveChangesAsync();
+
+        // --- Notify all admin/dispatch users of new contact form submission ---
+        var adminRoles = new[] { "SuperAdmin", "Admin", "DispatchManager", "Dispatcher" };
+        foreach (var roleName in adminRoles)
+        {
+            var usersInRole = await _userManager.GetUsersInRoleAsync(roleName);
+            foreach (var user in usersInRole)
+            {
+                await _notificationService.CreateNotificationAsync(
+                    user.Id,
+                    NotificationType.NewMessage,
+                    "New Contact Form",
+                    $"{request.Name} ({request.Email}) submitted a contact form: {request.Subject}",
+                    "ContactMessage",
+                    contactMessage.Id);
+            }
+        }
+
+        // Broadcast to dashboard
+        await _dashboardHub.Clients.Group("dashboard-admins").SendAsync("DashboardUpdate", new
+        {
+            entityType = "ContactMessage",
+            action = "Created",
+            entity = new
+            {
+                contactId = contactMessage.Id,
+                name = request.Name,
+                email = request.Email,
+                phone = request.Phone,
+                subject = request.Subject,
+                message = request.Message,
+                timestamp = DateTimeOffset.UtcNow
+            }
+        });
 
         return Ok(ApiResponse<object>.Ok(
             new { },

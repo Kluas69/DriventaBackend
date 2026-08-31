@@ -5,8 +5,10 @@ using Driventa.Application.DTOs.Documents;
 using Driventa.Application.Interfaces;
 using Driventa.Domain.Entities;
 using Driventa.Domain.Enums;
+using Driventa.Infrastructure.Identity;
 using Driventa.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -21,17 +23,20 @@ public class DocumentsController : ControllerBase
     private readonly IWebHostEnvironment _env;
     private readonly INotificationService _notificationService;
     private readonly IHubContext<DashboardHub> _dashboardHub;
+    private readonly UserManager<ApplicationUser> _userManager;
 
     public DocumentsController(
         AppDbContext context,
         IWebHostEnvironment env,
         INotificationService notificationService,
-        IHubContext<DashboardHub> dashboardHub)
+        IHubContext<DashboardHub> dashboardHub,
+        UserManager<ApplicationUser> userManager)
     {
         _context = context;
         _env = env;
         _notificationService = notificationService;
         _dashboardHub = dashboardHub;
+        _userManager = userManager;
     }
 
     [HttpPost("upload")]
@@ -128,6 +133,24 @@ public class DocumentsController : ControllerBase
                 $"{file.FileName} ({documentType}) uploaded for {entityName}.",
                 "Document",
                 document.Id);
+        }
+        else
+        {
+            var adminRoles = new[] { "SuperAdmin", "Admin", "DispatchManager", "Dispatcher" };
+            foreach (var roleName in adminRoles)
+            {
+                var usersInRole = await _userManager.GetUsersInRoleAsync(roleName);
+                foreach (var user in usersInRole)
+                {
+                    await _notificationService.CreateNotificationAsync(
+                        user.Id,
+                        NotificationType.DocumentUploaded,
+                        "Document Uploaded",
+                        $"{file.FileName} ({documentType}) uploaded for {entityName}.",
+                        "Document",
+                        document.Id);
+                }
+            }
         }
 
         // Broadcast to dashboard

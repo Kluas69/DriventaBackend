@@ -4,8 +4,10 @@ using Driventa.Application.DTOs.Drivers;
 using Driventa.Application.Interfaces;
 using Driventa.Domain.Entities;
 using Driventa.Domain.Enums;
+using Driventa.Infrastructure.Identity;
 using Driventa.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -19,15 +21,18 @@ public class DriversController : ControllerBase
     private readonly AppDbContext _context;
     private readonly INotificationService _notificationService;
     private readonly IHubContext<DashboardHub> _dashboardHub;
+    private readonly UserManager<ApplicationUser> _userManager;
 
     public DriversController(
         AppDbContext context,
         INotificationService notificationService,
-        IHubContext<DashboardHub> dashboardHub)
+        IHubContext<DashboardHub> dashboardHub,
+        UserManager<ApplicationUser> userManager)
     {
         _context = context;
         _notificationService = notificationService;
         _dashboardHub = dashboardHub;
+        _userManager = userManager;
     }
 
     [HttpGet]
@@ -130,7 +135,7 @@ public class DriversController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        // --- Notify carrier's assigned dispatcher ---
+        // --- Notify carrier's assigned dispatcher, or all admins as fallback ---
         if (carrier.AssignedDispatcherId.HasValue)
         {
             await _notificationService.CreateNotificationAsync(
@@ -140,6 +145,24 @@ public class DriversController : ControllerBase
                 $"{driver.FirstName} {driver.LastName} has been added to {carrier.CompanyName}.",
                 "Driver",
                 driver.Id);
+        }
+        else
+        {
+            var adminRoles = new[] { "SuperAdmin", "Admin", "DispatchManager", "Dispatcher" };
+            foreach (var roleName in adminRoles)
+            {
+                var usersInRole = await _userManager.GetUsersInRoleAsync(roleName);
+                foreach (var user in usersInRole)
+                {
+                    await _notificationService.CreateNotificationAsync(
+                        user.Id,
+                        NotificationType.DriverCreated,
+                        "New Driver Added",
+                        $"{driver.FirstName} {driver.LastName} has been added to {carrier.CompanyName}.",
+                        "Driver",
+                        driver.Id);
+                }
+            }
         }
 
         // Broadcast to dashboard
@@ -207,7 +230,7 @@ public class DriversController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        // Notify dispatcher if status changed
+        // Notify dispatcher if status changed, or all admins as fallback
         if (request.Status.HasValue && request.Status.Value != oldStatus)
         {
             var carrier = await _context.Carriers.FirstOrDefaultAsync(c => c.Id == driver.CarrierId);
@@ -220,6 +243,24 @@ public class DriversController : ControllerBase
                     $"Driver {driver.FirstName} {driver.LastName} status changed: {oldStatus} → {request.Status.Value}",
                     "Driver",
                     driver.Id);
+            }
+            else
+            {
+                var adminRoles = new[] { "SuperAdmin", "Admin", "DispatchManager", "Dispatcher" };
+                foreach (var roleName in adminRoles)
+                {
+                    var usersInRole = await _userManager.GetUsersInRoleAsync(roleName);
+                    foreach (var user in usersInRole)
+                    {
+                        await _notificationService.CreateNotificationAsync(
+                            user.Id,
+                            NotificationType.DriverCreated,
+                            "Driver Status Changed",
+                            $"Driver {driver.FirstName} {driver.LastName} status changed: {oldStatus} → {request.Status.Value}",
+                            "Driver",
+                            driver.Id);
+                    }
+                }
             }
         }
 

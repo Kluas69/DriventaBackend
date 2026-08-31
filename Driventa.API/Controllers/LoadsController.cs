@@ -5,8 +5,10 @@ using Driventa.Application.DTOs.Loads;
 using Driventa.Application.Interfaces;
 using Driventa.Domain.Entities;
 using Driventa.Domain.Enums;
+using Driventa.Infrastructure.Identity;
 using Driventa.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -20,15 +22,18 @@ public class LoadsController : ControllerBase
     private readonly AppDbContext _context;
     private readonly INotificationService _notificationService;
     private readonly IHubContext<DashboardHub> _dashboardHub;
+    private readonly UserManager<ApplicationUser> _userManager;
 
     public LoadsController(
         AppDbContext context,
         INotificationService notificationService,
-        IHubContext<DashboardHub> dashboardHub)
+        IHubContext<DashboardHub> dashboardHub,
+        UserManager<ApplicationUser> userManager)
     {
         _context = context;
         _notificationService = notificationService;
         _dashboardHub = dashboardHub;
+        _userManager = userManager;
     }
 
     [HttpGet]
@@ -164,7 +169,7 @@ public class LoadsController : ControllerBase
         // Reload with navigation properties for response
         await _context.Entry(load).Reference(l => l.Carrier).LoadAsync();
 
-        // --- Notify carrier's assigned dispatcher ---
+        // --- Notify carrier's assigned dispatcher, or all admins as fallback ---
         if (carrier.AssignedDispatcherId.HasValue)
         {
             await _notificationService.CreateNotificationAsync(
@@ -174,6 +179,24 @@ public class LoadsController : ControllerBase
                 $"Load {load.LoadNumber} ({load.PickupCity}, {load.PickupState} → {load.DeliveryCity}, {load.DeliveryState}) has been assigned to {carrier.CompanyName}.",
                 "Load",
                 load.Id);
+        }
+        else
+        {
+            var adminRoles = new[] { "SuperAdmin", "Admin", "DispatchManager", "Dispatcher" };
+            foreach (var roleName in adminRoles)
+            {
+                var usersInRole = await _userManager.GetUsersInRoleAsync(roleName);
+                foreach (var user in usersInRole)
+                {
+                    await _notificationService.CreateNotificationAsync(
+                        user.Id,
+                        NotificationType.LoadCreated,
+                        "New Load Created",
+                        $"Load {load.LoadNumber} ({load.PickupCity}, {load.PickupState} → {load.DeliveryCity}, {load.DeliveryState}) has been created for {carrier.CompanyName}.",
+                        "Load",
+                        load.Id);
+                }
+            }
         }
 
         // Broadcast to dashboard
@@ -330,7 +353,7 @@ public class LoadsController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        // --- Notify carrier's assigned dispatcher of status change ---
+        // --- Notify carrier's assigned dispatcher of status change, or all admins as fallback ---
         if (load.Carrier?.AssignedDispatcherId.HasValue == true)
         {
             await _notificationService.CreateNotificationAsync(
@@ -340,6 +363,24 @@ public class LoadsController : ControllerBase
                 $"Load {load.LoadNumber} status changed: {oldStatus} → {request.Status}",
                 "Load",
                 load.Id);
+        }
+        else
+        {
+            var adminRoles = new[] { "SuperAdmin", "Admin", "DispatchManager", "Dispatcher" };
+            foreach (var roleName in adminRoles)
+            {
+                var usersInRole = await _userManager.GetUsersInRoleAsync(roleName);
+                foreach (var user in usersInRole)
+                {
+                    await _notificationService.CreateNotificationAsync(
+                        user.Id,
+                        NotificationType.LoadStatusChanged,
+                        "Load Status Updated",
+                        $"Load {load.LoadNumber} status changed: {oldStatus} → {request.Status}",
+                        "Load",
+                        load.Id);
+                }
+            }
         }
 
         // Broadcast status change
