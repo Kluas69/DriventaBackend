@@ -562,7 +562,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"assignedDispatcherId\": \"dispatcher-id-or-null\",\n  \"notes\": \"Onboarding notes\"\n}"
+              "raw": "{\n  \"assignedDispatcherId\": null,\n  \"notes\": \"Onboarding notes\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/Applications/{{applicationId}}/convert-to-carrier",

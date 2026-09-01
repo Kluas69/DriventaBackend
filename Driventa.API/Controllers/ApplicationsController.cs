@@ -310,8 +310,10 @@ public class ApplicationsController : ControllerBase
     [Authorize(Policy = "applications.convert")]
     public async Task<ActionResult<ApiResponse<CarrierResponse>>> ConvertToCarrier(
         Guid id,
-        [FromBody] ConvertToCarrierRequest request)
+        [FromBody] ConvertToCarrierRequest? request)
     {
+        request ??= new ConvertToCarrierRequest();
+
         var application = await _context.Applications
             .FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted);
 
