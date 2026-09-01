@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Driventa.API.Hubs;
 using Driventa.Application.DTOs.Applications;
+using Driventa.Application.DTOs.Carriers;
 using Driventa.Application.DTOs.Common;
 using Driventa.Application.Interfaces;
 using Driventa.Domain.Entities;
@@ -41,7 +42,7 @@ public class ApplicationsController : ControllerBase
 
     [HttpGet]
     [Authorize(Policy = "applications.view")]
-    public async Task<ActionResult<ApiResponse<PaginatedResponse<Domain.Entities.Application>>>> GetAll(
+    public async Task<ActionResult<ApiResponse<PaginatedResponse<ApplicationDto>>>> GetAll(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         [FromQuery] string? search = null,
@@ -67,10 +68,10 @@ public class ApplicationsController : ControllerBase
             .Take(pageSize)
             .ToListAsync();
 
-        return Ok(ApiResponse<PaginatedResponse<Domain.Entities.Application>>.Ok(
-            new PaginatedResponse<Domain.Entities.Application>
+        return Ok(ApiResponse<PaginatedResponse<ApplicationDto>>.Ok(
+            new PaginatedResponse<ApplicationDto>
             {
-                Items = items,
+                Items = items.Select(ApplicationDto.FromEntity).ToList(),
                 Page = page,
                 PageSize = pageSize,
                 TotalCount = totalCount
@@ -79,21 +80,21 @@ public class ApplicationsController : ControllerBase
 
     [HttpGet("{id:guid}")]
     [Authorize(Policy = "applications.view")]
-    public async Task<ActionResult<ApiResponse<Domain.Entities.Application>>> GetById(Guid id)
+    public async Task<ActionResult<ApiResponse<ApplicationDto>>> GetById(Guid id)
     {
         var application = await _context.Applications
             .Include(a => a.Notes)
             .FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted);
 
         if (application == null)
-            return NotFound(ApiResponse<Domain.Entities.Application>.Fail("Application not found."));
+            return NotFound(ApiResponse<ApplicationDto>.Fail("Application not found."));
 
-        return Ok(ApiResponse<Domain.Entities.Application>.Ok(application));
+        return Ok(ApiResponse<ApplicationDto>.Ok(ApplicationDto.FromEntity(application)));
     }
 
     [HttpPatch("{id:guid}")]
     [Authorize(Policy = "applications.edit")]
-    public async Task<ActionResult<ApiResponse<Domain.Entities.Application>>> Update(
+    public async Task<ActionResult<ApiResponse<ApplicationDto>>> Update(
         Guid id,
         [FromBody] UpdateApplicationRequest request)
     {
@@ -101,7 +102,7 @@ public class ApplicationsController : ControllerBase
             .FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted);
 
         if (application == null)
-            return NotFound(ApiResponse<Domain.Entities.Application>.Fail("Application not found."));
+            return NotFound(ApiResponse<ApplicationDto>.Fail("Application not found."));
 
         if (request.FullName != null) application.FullName = request.FullName;
         if (request.Email != null) application.Email = request.Email;
@@ -203,12 +204,12 @@ public class ApplicationsController : ControllerBase
         });
 
         await _context.SaveChangesAsync();
-        return Ok(ApiResponse<Domain.Entities.Application>.Ok(application, "Application updated successfully."));
+        return Ok(ApiResponse<ApplicationDto>.Ok(ApplicationDto.FromEntity(application), "Application updated successfully."));
     }
 
     [HttpPost("{id:guid}/assign")]
     [Authorize(Policy = "applications.assign")]
-    public async Task<ActionResult<ApiResponse<Domain.Entities.Application>>> Assign(
+    public async Task<ActionResult<ApiResponse<ApplicationDto>>> Assign(
         Guid id,
         [FromBody] AssignApplicationRequest request)
     {
@@ -216,7 +217,7 @@ public class ApplicationsController : ControllerBase
             .FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted);
 
         if (application == null)
-            return NotFound(ApiResponse<Domain.Entities.Application>.Fail("Application not found."));
+            return NotFound(ApiResponse<ApplicationDto>.Fail("Application not found."));
 
         application.AssignedToUserId = request.UserId;
         application.Status = ApplicationStatus.Reviewing;
@@ -258,12 +259,12 @@ public class ApplicationsController : ControllerBase
             "Application",
             application.Id);
 
-        return Ok(ApiResponse<Domain.Entities.Application>.Ok(application, "Application assigned successfully."));
+        return Ok(ApiResponse<ApplicationDto>.Ok(ApplicationDto.FromEntity(application), "Application assigned successfully."));
     }
 
     [HttpPost("{id:guid}/notes")]
     [Authorize(Policy = "applications.view")]
-    public async Task<ActionResult<ApiResponse<ApplicationNote>>> AddNote(
+    public async Task<ActionResult<ApiResponse<ApplicationNoteDto>>> AddNote(
         Guid id,
         [FromBody] ApplicationNoteRequest request)
     {
@@ -271,7 +272,7 @@ public class ApplicationsController : ControllerBase
             .FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted);
 
         if (application == null)
-            return NotFound(ApiResponse<ApplicationNote>.Fail("Application not found."));
+            return NotFound(ApiResponse<ApplicationNoteDto>.Fail("Application not found."));
 
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         var note = new ApplicationNote
@@ -284,30 +285,30 @@ public class ApplicationsController : ControllerBase
         _context.ApplicationNotes.Add(note);
         await _context.SaveChangesAsync();
 
-        return Ok(ApiResponse<ApplicationNote>.Ok(note, "Note added successfully."));
+        return Ok(ApiResponse<ApplicationNoteDto>.Ok(ApplicationNoteDto.FromEntity(note), "Note added successfully."));
     }
 
     [HttpGet("{id:guid}/notes")]
     [Authorize(Policy = "applications.view")]
-    public async Task<ActionResult<ApiResponse<List<ApplicationNote>>>> GetNotes(Guid id)
+    public async Task<ActionResult<ApiResponse<List<ApplicationNoteDto>>>> GetNotes(Guid id)
     {
         var application = await _context.Applications
             .FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted);
 
         if (application == null)
-            return NotFound(ApiResponse<List<ApplicationNote>>.Fail("Application not found."));
+            return NotFound(ApiResponse<List<ApplicationNoteDto>>.Fail("Application not found."));
 
         var notes = await _context.ApplicationNotes
             .Where(n => n.ApplicationId == id)
             .OrderByDescending(n => n.CreatedAt)
             .ToListAsync();
 
-        return Ok(ApiResponse<List<ApplicationNote>>.Ok(notes));
+        return Ok(ApiResponse<List<ApplicationNoteDto>>.Ok(notes.Select(ApplicationNoteDto.FromEntity).ToList()));
     }
 
     [HttpPost("{id:guid}/convert-to-carrier")]
     [Authorize(Policy = "applications.convert")]
-    public async Task<ActionResult<ApiResponse<Carrier>>> ConvertToCarrier(
+    public async Task<ActionResult<ApiResponse<CarrierResponse>>> ConvertToCarrier(
         Guid id,
         [FromBody] ConvertToCarrierRequest request)
     {
@@ -315,13 +316,13 @@ public class ApplicationsController : ControllerBase
             .FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted);
 
         if (application == null)
-            return NotFound(ApiResponse<Carrier>.Fail("Application not found."));
+            return NotFound(ApiResponse<CarrierResponse>.Fail("Application not found."));
 
         if (application.Status == ApplicationStatus.Rejected)
-            return BadRequest(ApiResponse<Carrier>.Fail("Cannot convert a rejected application."));
+            return BadRequest(ApiResponse<CarrierResponse>.Fail("Cannot convert a rejected application."));
 
         if (application.ConvertedCarrierId.HasValue)
-            return BadRequest(ApiResponse<Carrier>.Fail("Application has already been converted to a carrier."));
+            return BadRequest(ApiResponse<CarrierResponse>.Fail("Application has already been converted to a carrier."));
 
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
@@ -405,7 +406,22 @@ public class ApplicationsController : ControllerBase
 
             await transaction.CommitAsync();
 
-            return Ok(ApiResponse<Carrier>.Ok(carrier, "Application converted to carrier successfully."));
+            return Ok(ApiResponse<CarrierResponse>.Ok(new CarrierResponse
+            {
+                Id = carrier.Id,
+                CompanyName = carrier.CompanyName,
+                ContactName = carrier.ContactName,
+                Email = carrier.Email,
+                Phone = carrier.Phone,
+                McNumber = carrier.McNumber,
+                DotNumber = carrier.DotNumber,
+                PreferredLanes = carrier.PreferredLanes,
+                Notes = carrier.Notes,
+                Status = carrier.Status,
+                AssignedDispatcherId = carrier.AssignedDispatcherId,
+                ApplicationId = carrier.ApplicationId,
+                CreatedAt = carrier.CreatedAt
+            }, "Application converted to carrier successfully."));
         }
         catch (Exception)
         {
@@ -416,13 +432,13 @@ public class ApplicationsController : ControllerBase
 
     [HttpPost("{id:guid}/contact")]
     [Authorize(Policy = "applications.edit")]
-    public async Task<ActionResult<ApiResponse<Domain.Entities.Application>>> Contact(Guid id)
+    public async Task<ActionResult<ApiResponse<ApplicationDto>>> Contact(Guid id)
     {
         var application = await _context.Applications
             .FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted);
 
         if (application == null)
-            return NotFound(ApiResponse<Domain.Entities.Application>.Fail("Application not found."));
+            return NotFound(ApiResponse<ApplicationDto>.Fail("Application not found."));
 
         var oldStatus = application.Status;
         application.Status = ApplicationStatus.Contacted;
@@ -491,18 +507,18 @@ public class ApplicationsController : ControllerBase
             }
         });
 
-        return Ok(ApiResponse<Domain.Entities.Application>.Ok(application, "Application marked as contacted."));
+        return Ok(ApiResponse<ApplicationDto>.Ok(ApplicationDto.FromEntity(application), "Application marked as contacted."));
     }
 
     [HttpPost("{id:guid}/approve")]
     [Authorize(Policy = "applications.edit")]
-    public async Task<ActionResult<ApiResponse<Domain.Entities.Application>>> Approve(Guid id)
+    public async Task<ActionResult<ApiResponse<ApplicationDto>>> Approve(Guid id)
     {
         var application = await _context.Applications
             .FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted);
 
         if (application == null)
-            return NotFound(ApiResponse<Domain.Entities.Application>.Fail("Application not found."));
+            return NotFound(ApiResponse<ApplicationDto>.Fail("Application not found."));
 
         var oldStatus = application.Status;
         application.Status = ApplicationStatus.Approved;
@@ -571,18 +587,18 @@ public class ApplicationsController : ControllerBase
             }
         });
 
-        return Ok(ApiResponse<Domain.Entities.Application>.Ok(application, "Application approved successfully."));
+        return Ok(ApiResponse<ApplicationDto>.Ok(ApplicationDto.FromEntity(application), "Application approved successfully."));
     }
 
     [HttpPost("{id:guid}/reject")]
     [Authorize(Policy = "applications.edit")]
-    public async Task<ActionResult<ApiResponse<Domain.Entities.Application>>> Reject(Guid id)
+    public async Task<ActionResult<ApiResponse<ApplicationDto>>> Reject(Guid id)
     {
         var application = await _context.Applications
             .FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted);
 
         if (application == null)
-            return NotFound(ApiResponse<Domain.Entities.Application>.Fail("Application not found."));
+            return NotFound(ApiResponse<ApplicationDto>.Fail("Application not found."));
 
         var oldStatus = application.Status;
         application.Status = ApplicationStatus.Rejected;
@@ -651,7 +667,7 @@ public class ApplicationsController : ControllerBase
             }
         });
 
-        return Ok(ApiResponse<Domain.Entities.Application>.Ok(application, "Application rejected."));
+        return Ok(ApiResponse<ApplicationDto>.Ok(ApplicationDto.FromEntity(application), "Application rejected."));
     }
 
     [HttpDelete("{id:guid}")]
