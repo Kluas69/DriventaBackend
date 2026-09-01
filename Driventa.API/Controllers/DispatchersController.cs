@@ -12,10 +12,14 @@ namespace Driventa.API.Controllers;
 public class DispatchersController : ControllerBase
 {
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly RoleManager<IdentityRole<Guid>> _roleManager;
 
-    public DispatchersController(UserManager<ApplicationUser> userManager)
+    public DispatchersController(
+        UserManager<ApplicationUser> userManager,
+        RoleManager<IdentityRole<Guid>> roleManager)
     {
         _userManager = userManager;
+        _roleManager = roleManager;
     }
 
     [HttpGet]
@@ -31,7 +35,6 @@ public class DispatchersController : ControllerBase
 
         var users = await _userManager.GetUsersInRoleAsync("Dispatcher");
         var query = users
-            .Where(u => u.IsActive)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
@@ -71,5 +74,70 @@ public class DispatchersController : ControllerBase
                 PageSize = pageSize,
                 TotalCount = totalCount
             }));
+    }
+
+    [HttpPost]
+    [Authorize(Policy = "users.create")]
+    public async Task<ActionResult<ApiResponse<DispatcherResponse>>> Create(
+        [FromBody] CreateDispatcherRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.FirstName) ||
+            string.IsNullOrWhiteSpace(request.LastName) ||
+            string.IsNullOrWhiteSpace(request.Email) ||
+            string.IsNullOrWhiteSpace(request.Password))
+        {
+            return BadRequest(ApiResponse<DispatcherResponse>.Fail("First name, last name, email, and password are required."));
+        }
+
+        if (request.Password != request.ConfirmPassword)
+        {
+            return BadRequest(ApiResponse<DispatcherResponse>.Fail("Passwords do not match."));
+        }
+
+        var existingUser = await _userManager.FindByEmailAsync(request.Email);
+        if (existingUser != null)
+        {
+            return BadRequest(ApiResponse<DispatcherResponse>.Fail("A user with this email already exists."));
+        }
+
+        var dispatcherRole = await _roleManager.FindByNameAsync("Dispatcher");
+        if (dispatcherRole == null)
+        {
+            return BadRequest(ApiResponse<DispatcherResponse>.Fail("Dispatcher role does not exist."));
+        }
+
+        var user = new ApplicationUser
+        {
+            UserName = request.Email,
+            Email = request.Email,
+            FirstName = request.FirstName,
+            LastName = request.LastName,
+            PhoneNumber = request.PhoneNumber,
+            EmailConfirmed = true,
+            IsActive = true
+        };
+
+        var result = await _userManager.CreateAsync(user, request.Password);
+        if (!result.Succeeded)
+        {
+            var errors = result.Errors.Select(e => e.Description).ToList();
+            return BadRequest(ApiResponse<DispatcherResponse>.Fail("Failed to create dispatcher.", errors));
+        }
+
+        await _userManager.AddToRoleAsync(user, dispatcherRole.Name!);
+
+        var response = new DispatcherResponse
+        {
+            Id = user.Id,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            Email = user.Email ?? string.Empty,
+            PhoneNumber = user.PhoneNumber,
+            IsActive = user.IsActive,
+            CreatedAt = user.CreatedAt,
+            LastLoginAt = user.LastLoginAt
+        };
+
+        return Ok(ApiResponse<DispatcherResponse>.Ok(response, "Dispatcher created successfully."));
     }
 }

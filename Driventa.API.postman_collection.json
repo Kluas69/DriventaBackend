@@ -16,8 +16,58 @@
     {
       "key": "refreshToken",
       "value": ""
+    },
+    {
+      "key": "applicationId",
+      "value": "00000000-0000-0000-0000-000000000000"
+    },
+    {
+      "key": "roleId",
+      "value": "00000000-0000-0000-0000-000000000000"
+    },
+    {
+      "key": "userId",
+      "value": "00000000-0000-0000-0000-000000000000"
+    },
+    {
+      "key": "carrierId",
+      "value": "00000000-0000-0000-0000-000000000000"
+    },
+    {
+      "key": "truckId",
+      "value": "00000000-0000-0000-0000-000000000000"
+    },
+    {
+      "key": "driverId",
+      "value": "00000000-0000-0000-0000-000000000000"
+    },
+    {
+      "key": "loadId",
+      "value": "00000000-0000-0000-0000-000000000000"
+    },
+    {
+      "key": "brokerId",
+      "value": "00000000-0000-0000-0000-000000000000"
+    },
+    {
+      "key": "invoiceId",
+      "value": "00000000-0000-0000-0000-000000000000"
     }
   ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.success && json.data) {",
+                  "  pm.collectionVariables.set('accessToken', json.data.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', json.data.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
   "auth": {
     "type": "bearer",
     "bearer": [
@@ -26,7 +76,21 @@
         "value": "{{accessToken}}",
         "type": "string"
       }
-    ]
+    ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.success && json.data) {",
+                  "  pm.collectionVariables.set('accessToken', json.data.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', json.data.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
   },
   "item": [
     {
@@ -429,6 +493,29 @@
         },
         {
           "name": "Get Application By ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Response is valid JSON', function () {",
+                  "  pm.response.json();",
+                  "});",
+                  "var json = pm.response.json();",
+                  "pm.test('Application details request succeeded', function () {",
+                  "  pm.expect(pm.response.code).to.eql(200);",
+                  "  pm.expect(json.success).to.eql(true);",
+                  "});",
+                  "pm.test('Notes do not contain application navigation objects', function () {",
+                  "  var notes = (json.data && json.data.notes) || [];",
+                  "  notes.forEach(function (note) {",
+                  "    pm.expect(note).to.not.have.property('application');",
+                  "  });",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -504,6 +591,26 @@
         },
         {
           "name": "Get Application Notes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Response is valid JSON', function () {",
+                  "  pm.response.json();",
+                  "});",
+                  "var json = pm.response.json();",
+                  "pm.test('Notes response contains only DTO fields', function () {",
+                  "  var notes = (json.data || []);",
+                  "  notes.forEach(function (note) {",
+                  "    pm.expect(note).to.not.have.property('application');",
+                  "    pm.expect(note).to.have.property('applicationId');",
+                  "  });",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -567,7 +674,12 @@
             "url": {
               "raw": "{{baseUrl}}/api/Applications/{{applicationId}}/convert-to-carrier",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "Applications", "{{applicationId}}", "convert-to-carrier"]
+              "path": [
+                "api",
+                "Applications",
+                "{{applicationId}}",
+                "convert-to-carrier"
+              ]
             }
           }
         },
@@ -1353,7 +1465,13 @@
             "url": {
               "raw": "{{baseUrl}}/api/Billing/invoices/{{invoiceId}}/payments",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "Billing", "invoices", "{{invoiceId}}", "payments"]
+              "path": [
+                "api",
+                "Billing",
+                "invoices",
+                "{{invoiceId}}",
+                "payments"
+              ]
             }
           }
         },
@@ -1436,7 +1554,13 @@
             "url": {
               "raw": "{{baseUrl}}/api/Messages/conversations/{{conversationId}}/read",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "Messages", "conversations", "{{conversationId}}", "read"]
+              "path": [
+                "api",
+                "Messages",
+                "conversations",
+                "{{conversationId}}",
+                "read"
+              ]
             }
           }
         }
@@ -1655,6 +1779,27 @@
                 { "key": "pageSize", "value": "20" },
                 { "key": "search", "value": "", "disabled": true }
               ]
+            }
+          }
+        },
+        {
+          "name": "Create Dispatcher",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Dispatcher\",\n  \"email\": \"john.dispatcher@driventa.com\",\n  \"password\": \"Password123!\",\n  \"confirmPassword\": \"Password123!\",\n  \"phoneNumber\": \"+1234567890\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/Dispatchers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "Dispatchers"]
             }
           }
         }
